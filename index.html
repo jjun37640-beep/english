@@ -1,0 +1,2306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>启航英语 · 基础英语自学工坊</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Inter & Lexend for clean typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Lexend', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#F0F9FF',
+              100: '#E0F2FE',
+              500: '#0284C7',
+              600: '#0369A1',
+              700: '#075985',
+            },
+            amberBrand: {
+              50: '#FFFBEB',
+              100: '#FEF3C7',
+              500: '#F59E0B',
+              600: '#D97706',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Warm learning theme aesthetic */
+    body {
+      background-color: #FAF8F5;
+      color: #1F2937;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    
+    /* Phonics Letter Highlight Glow */
+    .phonics-target {
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .phonics-target.active-highlight {
+      background-color: #FEF08A;
+      color: #854D0E;
+      border-radius: 4px;
+      padding: 0 4px;
+      font-weight: 700;
+      transform: scale(1.05);
+      display: inline-block;
+      box-shadow: 0 0 0 2px #EAB308;
+    }
+
+    /* Large Phonics Breakdown Diagram Styles */
+    .diagram-column {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .diagram-column:hover .diagram-letter-box {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px -2px rgba(245, 158, 11, 0.35);
+      border-color: #d97706;
+      background-color: #fef3c7;
+    }
+    .diagram-column:hover .diagram-sound-box {
+      transform: translateY(2px);
+      box-shadow: 0 6px 16px -2px rgba(2, 132, 199, 0.35);
+      border-color: #0284c7;
+      background-color: #e0f2fe;
+    }
+    .diagram-column:hover .diagram-arrow-down {
+      color: #0284c7;
+      transform: scale(1.15) translateY(2px);
+    }
+    .diagram-column.active-col .diagram-letter-box {
+      background-color: #fde047;
+      border-color: #ca8a04;
+      color: #713f12;
+      transform: scale(1.05);
+      box-shadow: 0 0 0 3px #facc15;
+    }
+    .diagram-column.active-col .diagram-sound-box {
+      background-color: #bae6fd;
+      border-color: #0284c7;
+      color: #0369a1;
+      transform: scale(1.05);
+      box-shadow: 0 0 0 3px #38bdf8;
+    }
+    .diagram-column.active-col .diagram-arrow-down {
+      color: #0284c7;
+      transform: scale(1.25) translateY(3px);
+    }
+
+    /* Collapsible card state & transitions */
+    .word-card-container {
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .word-card-header {
+      transition: background-color 0.2s ease;
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F1EFEA;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D1D5DB;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9CA3AF;
+    }
+
+    /* 课文滚筒：隐藏滚动条，靠左右按钮和圆点翻页 */
+    .lesson-strip {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding-bottom: 2px;
+    }
+    .lesson-strip::-webkit-scrollbar {
+      display: none;
+    }
+    .lesson-strip > button {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    .lesson-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 9999px;
+      background: #D6D3D1;
+      transition: width .2s ease, background-color .2s ease;
+    }
+    .lesson-dot.is-on {
+      width: 18px;
+      background: #059669;
+    }
+
+    /* ===== 数据层：加载 / 状态浮标 ===== */
+    #data-status { transition: opacity 0.25s ease; }
+    @keyframes dataSpin { to { transform: rotate(360deg); } }
+    .data-spinner { animation: dataSpin 0.8s linear infinite; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-amber-200 selection:text-amber-900">
+
+  <!-- 数据加载遮罩（内容来自云函数，拿到后才渲染） -->
+  <div id="data-loading" class="fixed inset-0 z-[9998] flex items-center justify-center bg-[#FAF8F5]/92 backdrop-blur-sm">
+    <div class="flex flex-col items-center gap-3">
+      <div class="data-spinner w-10 h-10 rounded-full border-[3px] border-stone-200 border-t-sky-600"></div>
+      <p id="data-loading-text" class="text-sm font-medium text-stone-600">正在从云端加载课程内容…</p>
+      <p class="text-xs text-stone-400">内容由腾讯云开发提供，首次加载后会缓存在本地</p>
+    </div>
+  </div>
+
+  <!-- 数据加载失败 -->
+  <div id="data-error" class="hidden fixed inset-0 z-[9999] flex items-center justify-center bg-[#FAF8F5]/95 backdrop-blur-sm px-6">
+    <div class="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 text-center shadow-lg space-y-4">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+        <i data-lucide="cloud-off" class="h-6 w-6"></i>
+      </div>
+      <div>
+        <h3 class="font-display text-lg font-bold text-stone-900">课程内容加载失败</h3>
+        <p id="data-error-message" class="mt-1 break-all text-sm text-stone-500">网络异常</p>
+      </div>
+      <div class="flex items-center justify-center gap-2">
+        <button onclick="DataService.boot()" class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700">重新加载</button>
+        <button onclick="DataService.refresh()" class="rounded-xl bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-200">跳过缓存重试</button>
+      </div>
+      <p class="text-xs text-stone-400">若持续失败，请确认云函数 eng-data 的 HTTP 访问是否正常。</p>
+    </div>
+  </div>
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200/80 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+          <i data-lucide="compass" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="font-display font-bold text-lg sm:text-xl text-stone-900 tracking-tight">启航英语</span>
+          <span class="hidden sm:inline-block ml-2 text-xs font-medium px-2 py-0.5 bg-stone-100 text-stone-600 rounded-full border border-stone-200">基础自学工坊</span>
+        </div>
+      </div>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="flex items-center p-1 bg-stone-100/90 rounded-2xl border border-stone-200/60 shadow-inner">
+        <button id="nav-btn-phonetics" onclick="switchTab('phonetics')" class="nav-tab active flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 text-stone-900 bg-white shadow-sm">
+          <i data-lucide="mic" class="w-4 h-4 text-sky-600"></i>
+          <span>国际音标</span>
+        </button>
+        <button id="nav-btn-words" onclick="switchTab('words')" class="nav-tab flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 text-stone-600 hover:text-stone-900">
+          <i data-lucide="layers" class="w-4 h-4 text-amber-500"></i>
+          <span>自然拼读</span>
+        </button>
+        <button id="nav-btn-lessons" onclick="switchTab('lessons')" class="nav-tab flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 text-stone-600 hover:text-stone-900">
+          <i data-lucide="book-open" class="w-4 h-4 text-emerald-600"></i>
+          <span>课文研读</span>
+        </button>
+      </nav>
+
+      <!-- Global Controls & Settings -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- Bilingual toggle -->
+        <button id="toggle-translation-btn" onclick="toggleGlobalTranslation()" title="中英双语对照开关" class="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-stone-50 border border-stone-200 text-stone-700 hover:bg-stone-100 transition">
+          <i data-lucide="languages" class="w-3.5 h-3.5 text-stone-500"></i>
+          <span id="translation-btn-text" class="hidden md:inline">双语显示: 开</span>
+        </button>
+
+        <!-- Audio Speed Setting -->
+        <div class="relative inline-block text-left">
+          <select id="audio-speed-select" class="appearance-none bg-stone-50 border border-stone-200 text-stone-700 text-xs rounded-xl px-2.5 py-1.5 pr-6 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <option value="0.5">0.5x 慢速</option>
+            <option value="0.8">0.8x 较慢</option>
+            <option value="1.0" selected>1.0x 原速</option>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-stone-400">
+            <i data-lucide="chevron-down" class="w-3 h-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ========================================== -->
+    <!-- SECTION 1: 国际音标表 (Phonetic Symbols)   -->
+    <!-- ========================================== -->
+    <section id="tab-phonetics" class="tab-pane block space-y-6">
+      
+      <!-- Module Banner -->
+      <div class="bg-gradient-to-r from-sky-50 via-indigo-50/60 to-purple-50 rounded-2xl p-5 border border-sky-100/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span id="phonetics-count-badge" class="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-sky-600 text-white">国际音标表</span>
+            <span class="text-xs text-stone-500">IPA Phonetic Alphabet</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-display font-bold text-stone-900 mt-1">发音基础与口型索引</h2>
+          <p class="text-sm text-stone-600 mt-0.5"><span id="phonetics-summary">收录全部元音与辅音。</span>点击音标卡片即可即时发音并查看标准口型与典型代表词。</p>
+        </div>
+        <!-- Audio system note -->
+        <div class="flex items-center space-x-2 px-3 py-2 rounded-xl bg-white/90 border border-stone-200 text-xs text-stone-600">
+          <i data-lucide="info" class="w-4 h-4 text-sky-500 shrink-0"></i>
+          <span>当前启用原生高保真合成发音，已预留独立 MP3 及精准时间戳接口。</span>
+        </div>
+      </div>
+
+      <!-- Phonetic Sub-tabs -->
+      <div class="flex flex-wrap gap-2 border-b border-stone-200 pb-3">
+        <button onclick="filterPhonetics('all')" class="ph-filter-btn active px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-sky-600 text-white transition">全部 (48)</button>
+        <button onclick="filterPhonetics('vowels')" class="ph-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 text-stone-600 hover:bg-stone-200 transition">元音 (20)</button>
+        <button onclick="filterPhonetics('monophthongs')" class="ph-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 text-stone-600 hover:bg-stone-200 transition">单元音 (12)</button>
+        <button onclick="filterPhonetics('diphthongs')" class="ph-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 text-stone-600 hover:bg-stone-200 transition">双元音 (8)</button>
+        <button onclick="filterPhonetics('consonants')" class="ph-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 text-stone-600 hover:bg-stone-200 transition">辅音 (28)</button>
+      </div>
+
+      <!-- Phonetic Grid Container (Filled dynamically by JS) -->
+      <div id="phonetics-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
+        <!-- Rendered by renderPhoneticsGrid() -->
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SECTION 2: 自然拼读单词库 (Phonics Vocabulary - 依据第一张图)  -->
+    <!-- ============================================================== -->
+    <section id="tab-words" class="tab-pane hidden space-y-6">
+      
+      <!-- Module Header & Filters -->
+      <div class="bg-gradient-to-r from-amber-50/80 via-orange-50/50 to-stone-50 rounded-2xl p-5 border border-amber-200/60 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-600 text-white">主题词汇 (Word Themes)</span>
+            <span class="text-xs text-stone-500">按主题归类 · 例句可跳转课文页</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-display font-bold text-stone-900 mt-1">主题单词卡片库</h2>
+          <p class="text-sm text-stone-600 mt-0.5">单词按主题归类。每张卡片带出它所在的<b class="text-stone-800">例句</b>，点「去课文页看例句」可跳过去；在课文页点例句里的单词也能跳回这里。</p>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+          <div class="relative flex-1 md:w-48">
+            <input type="text" id="word-search-input" oninput="filterWords()" placeholder="搜索单词 / 释义 / 主题..." class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white border border-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs">
+            <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-stone-400"></i>
+          </div>
+          <select id="lesson-filter-select" onchange="filterWords()" class="bg-white border border-stone-200 text-stone-700 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs cursor-pointer">
+            <option value="all">全部主题</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Phonics Hint Banner -->
+      <div class="bg-amber-50/70 border border-amber-200/70 rounded-xl p-3 text-xs text-amber-900 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="sparkles" class="w-4 h-4 text-amber-600 shrink-0"></i>
+          <span><strong>交互提示：</strong>卡片默认精简收起（便于快速翻阅）。点击卡片右侧【自然拼读图解】可向下展开大号拆解树，<strong>同时最多仅展开 1 个单词</strong>，展开新单词时会自动收起上一个！</span>
+        </div>
+      </div>
+
+      <!-- Words Card List Container -->
+      <div id="words-cards-container" class="space-y-3.5">
+        <!-- Injected via renderWordsCards() -->
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- SECTION 3: 课文研读 (Lessons - 依据第二张图左右分栏布局)        -->
+    <!-- ============================================================== -->
+    <section id="tab-lessons" class="tab-pane hidden space-y-6">
+      
+      <!-- Lesson Selector Header -->
+      <div class="flex flex-col gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+            <i data-lucide="book-marked" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 id="lesson-view-title" class="font-display font-bold text-lg text-stone-900">Lesson 1: A Journey by Train</h2>
+            <p id="lesson-view-subtitle" class="text-xs text-stone-500">乘火车之旅 · 核心语音聚焦: /eɪ/ (ai) 与辅音连缀 /tr/</p>
+          </div>
+        </div>
+
+        <!-- Lesson Switcher Buttons -->
+        <div class="w-full flex flex-col gap-2.5">
+          <div class="flex items-center gap-2">
+            <button id="lesson-prev" onclick="scrollLessons(-1)" title="上一组课文"
+                    class="shrink-0 w-8 h-8 rounded-xl bg-white border border-stone-200 text-stone-500 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-stone-500 disabled:hover:border-stone-200">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <div class="flex-1 min-w-0 overflow-hidden">
+              <div id="lesson-switch-buttons" class="lesson-strip flex items-center space-x-1.5 overflow-x-auto scroll-smooth"></div>
+            </div>
+            <button id="lesson-next" onclick="scrollLessons(1)" title="下一组课文"
+                    class="shrink-0 w-8 h-8 rounded-xl bg-white border border-stone-200 text-stone-500 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-stone-500 disabled:hover:border-stone-200">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <div id="lesson-dots" class="flex items-center justify-center gap-1.5 h-2"></div>
+        </div>
+      </div>
+
+      <!-- 
+        LAYOUT DERIVED DIRECTLY FROM USER's SECOND IMAGE:
+        Left Box: [课文区域] (Large Rectangular Lesson Box)
+        Right Box: [单词区域] (Independent Rounded Vocabulary Box)
+      -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- LEFT PANEL: 课文区域 (Lesson Text Area - Large Box) -->
+        <div class="lg:col-span-8 bg-white rounded-2xl border-2 border-stone-800 p-6 shadow-sm min-h-[500px] flex flex-col justify-between">
+          <div>
+            <!-- Box Title / Tag -->
+            <div class="flex items-center justify-between border-b border-stone-200 pb-3 mb-5">
+              <div class="flex items-center space-x-2">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-stone-900"></span>
+                <h3 class="font-display font-bold text-base tracking-wide text-stone-900 uppercase">课文区域 (Text Area)</h3>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button onclick="playFullLesson()" class="flex items-center space-x-1 px-3 py-1 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition">
+                  <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                  <span>整篇朗读</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Sentences List (Interactive) -->
+            <div id="lesson-sentences-container" class="space-y-4">
+              <!-- Sentences injected dynamically -->
+            </div>
+          </div>
+
+          <!-- Bottom Audio Timestamp Notice / Player Bar -->
+          <div class="mt-8 pt-4 border-t border-stone-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-stone-400">
+            <div class="flex items-center space-x-1.5">
+              <i data-lucide="volume-2" class="w-3.5 h-3.5 text-stone-500"></i>
+              <span>点击任意句子左侧播放图标或文本可逐句跟读。生词已点亮，点击即联动右侧。</span>
+            </div>
+            <span class="font-mono text-[11px] bg-stone-100 px-2 py-0.5 rounded text-stone-600">MP3 & Timestamp Hook Ready</span>
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL: 单词区域 (Vocabulary Area - Rounded Card) -->
+        <div class="lg:col-span-4 bg-white rounded-3xl border-2 border-stone-800 p-5 shadow-sm sticky top-24">
+          <!-- Box Header -->
+          <div class="flex items-center justify-between border-b border-stone-200 pb-3 mb-4">
+            <div class="flex items-center space-x-2">
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+              <h3 class="font-display font-bold text-base tracking-wide text-stone-900 uppercase">单词区域 (Words)</h3>
+            </div>
+            <span id="lesson-word-count-badge" class="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 font-medium">5 个生词</span>
+          </div>
+
+          <p id="lesson-words-hint" class="text-xs text-stone-500 mb-3">本课例句里收录到的单词，点卡片可去单词页看词条：</p>
+
+          <button id="sentence-words-back" onclick="jumpToThemeOfSentence()" class="hidden mb-3 w-full py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold items-center justify-center space-x-1 transition">
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            <span>去看主题单词</span>
+          </button>
+
+          <!-- Lesson Specific Word List -->
+          <div id="lesson-words-container" class="space-y-3 max-h-[580px] overflow-y-auto pr-1">
+            <!-- Injected dynamically by renderLessonWords() -->
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Phonetic Detail Modal (For deep dive into tongue/mouth position) -->
+  <div id="phonetic-modal" class="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200 relative animate-in fade-in zoom-in-95 duration-150">
+      <button onclick="closePhoneticModal()" class="absolute top-4 right-4 text-stone-400 hover:text-stone-700 p-1 rounded-lg">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      
+      <div id="phonetic-modal-content">
+        <!-- Rendered by showPhoneticDetail() -->
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 数据来源浮标 -->
+  <div id="data-status" class="fixed bottom-6 left-6 z-40 flex items-center gap-1.5 rounded-full border border-stone-200 bg-white/95 py-1.5 pl-2.5 pr-1.5 text-[11px] text-stone-500 shadow-sm backdrop-blur">
+    <span data-status-dot class="h-2 w-2 rounded-full bg-stone-300"></span>
+    <span data-status-text>等待同步…</span>
+    <button onclick="DataService.refresh()" title="重新拉取云端内容" class="rounded-md p-1 transition hover:bg-stone-200">
+      <i data-lucide="refresh-cw" class="h-3 w-3"></i>
+    </button>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center space-x-2 bg-stone-900 text-white text-xs py-2.5 px-4 rounded-xl shadow-lg">
+    <i data-lucide="volume-2" class="w-4 h-4 text-amber-400"></i>
+    <span id="toast-message">正在播放发音...</span>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       DATA STORE: 48 IPA PHONETICS, WORDS WITH PHONICS BREAKDOWN, AND LESSONS
+       All audio links are ready for custom MP3 + timestamp injection.
+       ========================================================================== */
+
+    /* ==========================================================================
+       DATA LAYER
+       内容不再写死在页面里，全部来自腾讯云开发云函数 eng-data。
+       接口: POST https://cloud1-d0g9cnie47dd46cd5-1452417664.ap-shanghai.app.tcloudbase.com/eng-data
+       body: {"action":"getAll"}  ->  { code, data:{phonetics,words,lessons}, counts }
+       ========================================================================== */
+    const API_BASE = "https://cloud1-d0g9cnie47dd46cd5-1452417664.ap-shanghai.app.tcloudbase.com/eng-data";
+    const CACHE_KEY = "qihang-english:content:v16";
+    const CACHE_TTL = 30 * 60 * 1000; // 30 分钟内的本地缓存可直接用于首屏
+
+    // 全局数据：由 DataService 填充，渲染函数保持原样不改
+    let PHONETICS_DATA = [];
+    let WORDS_DATA = [];
+    let LESSONS_DATA = {};
+    let dataSource = "cloud"; // cloud | cache | error
+
+    /* ---------------- 媒体资源（音频 / 图片）地址解析 ----------------
+       mediaBase 为空 → 数据里必须写完整 http(s) 地址；
+       mediaBase 有值 → 数据里可以只写相对路径，例如 "phonetics/01.mp3"。
+       以后接真实音频，只在这一个地方（或后台 config 文档里）改基础地址即可。 */
+    let MEDIA_CONFIG = { mediaBase: "", preferRealAudio: true };
+
+    function resolveMediaUrl(p) {
+      if (!p) return "";
+      const s = String(p).trim();
+      if (!s) return "";
+      if (/^(https?:)?\/\//i.test(s) || s.startsWith("data:") || s.startsWith("blob:")) return s;
+      const base = String(MEDIA_CONFIG.mediaBase || "").trim();
+      if (!base) return s; // 没配 base，就按相对页面的路径处理（适合本地 assets/）
+      return base.replace(/\/+$/, "") + "/" + s.replace(/^\/+/, "");
+    }
+
+    /** 这个地址现在是否真的可播放（相对路径 + 没配 mediaBase = 音频还没接） */
+    function isPlayableMedia(p) {
+      if (!p) return false;
+      const s = String(p).trim();
+      if (!s) return false;
+      if (/^(https?:)?\/\//i.test(s) || s.startsWith("blob:")) return true;
+      return !!String(MEDIA_CONFIG.mediaBase || "").trim();
+    }
+
+    /** 按单词找真实音频：先查自然拼读词库，再查当前课文所有句子的逐词表 */
+    /** 单词发音：优先播真实录音（一个词可能有多段读音，依次播完），没有才退回合成发音 */
+    function playWordAudio(key) {
+      const normKey = (x) => String(x).toLowerCase().replace(/[^a-z0-9]/g, "");
+      const k = normKey(key);
+      const w =
+        WORDS_BY_ID[key] ||
+        WORDS_BY_ID["w-" + key] ||
+        (WORDS_DATA || []).find((x) => x.id === key || normKey(x.word) === k);
+      if (!w) { AudioEngine.speak(String(key)); return; }
+      if (w.mp3Url && Array.isArray(w.clips) && w.clips.length) {
+        AudioEngine.playClips(w.mp3Url, w.clips, w.word);
+        return;
+      }
+      // 兼容更早的单段时间戳结构
+      if (w.mp3Url && w.timestamp && typeof w.timestamp.start === "number") {
+        AudioEngine.playSegment(w.mp3Url, w.timestamp.start, w.timestamp.end, w.word);
+        return;
+      }
+      AudioEngine.speak(w.word);
+    }
+
+    /** 例句发音：有「整部分音频 + 时间戳」就播片段，否则合成朗读 */
+    function playSentenceAudio(sentenceId) {
+      const hit = (typeof SENTENCE_INDEX !== "undefined" && SENTENCE_INDEX[String(sentenceId)]) || null;
+      const s = hit ? hit.sentence : null;
+      if (!s) { return; }
+      if (isPlayableMedia(s.audioUrl) && s.timestamp && typeof s.timestamp.start === "number") {
+        AudioEngine.playSegment(s.audioUrl, s.timestamp.start, s.timestamp.end, s.en);
+        return;
+      }
+      AudioEngine.speak(s.en);
+    }
+
+    function findWordAudio(word) {
+      const norm = (x) => String(x).toLowerCase().replace(/[^a-z0-9]/g, "");
+      const key = norm(word);
+      if (!key) return "";
+      const phonics = (WORDS_DATA || []).find((x) => norm(x.id) === key || norm(x.word) === key);
+      if (phonics && phonics.mp3Url) return phonics.mp3Url;
+      for (const lesson of Object.values(LESSONS_DATA || {})) {
+        for (const s of lesson.sentences || []) {
+          const hit = (s.words || []).find((x) => norm(x.w) === key);
+          if (hit && hit.audioUrl) return hit.audioUrl;
+        }
+      }
+      return "";
+    }
+
+    /* ---------------- 主题（单词按主题分组） ---------------- */
+    let THEMES_DATA = [];
+
+    /* 单词列表分页：词库有 500+ 条，一次性渲染会卡死，按页显示 */
+    const WORDS_PAGE_SIZE = 48;
+    let wordsShown = WORDS_PAGE_SIZE;
+
+    function sortedThemes() {
+      return (THEMES_DATA || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
+    function themeOf(id) {
+      return (THEMES_DATA || []).find((t) => t.id === id) || null;
+    }
+
+    function themeName(id) {
+      const t = themeOf(id);
+      return t ? t.name : "未分类";
+    }
+
+    const THEME_TONES = {
+      sky: "bg-sky-50 text-sky-700 border border-sky-200",
+      rose: "bg-rose-50 text-rose-700 border border-rose-200",
+      amber: "bg-amber-50 text-amber-700 border border-amber-200",
+      emerald: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+      violet: "bg-violet-50 text-violet-700 border border-violet-200",
+      teal: "bg-teal-50 text-teal-700 border border-teal-200",
+      indigo: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+      cyan: "bg-cyan-50 text-cyan-700 border border-cyan-200",
+      orange: "bg-orange-50 text-orange-700 border border-orange-200",
+      lime: "bg-lime-50 text-lime-700 border border-lime-200"
+    };
+
+    function themeChipClass(id) {
+      const t = themeOf(id);
+      return THEME_TONES[(t && t.tone) || "sky"] || THEME_TONES.sky;
+    }
+
+    /* ---------------- 索引：单词 ↔ 例句 双向查找 ---------------- */
+    let WORDS_BY_ID = {};
+    let SENTENCE_INDEX = {};
+    /** 句子 -> 它所属的单词 id（这条例句是给哪个词配的） */
+    let SENTENCE_OWNER = {};
+
+    function rebuildIndexes() {
+      WORDS_BY_ID = {};
+      (WORDS_DATA || []).forEach((w) => {
+        WORDS_BY_ID[w.id] = w;
+      });
+      SENTENCE_INDEX = {};
+      Object.values(LESSONS_DATA || {}).forEach((lesson) => {
+        (lesson.sentences || []).forEach((s) => {
+          SENTENCE_INDEX[String(s.id)] = { sentence: s, lesson };
+        });
+      });
+      // 句子 -> 它所属的单词（这条例句是给哪个词配的）
+      SENTENCE_OWNER = {};
+      (WORDS_DATA || []).forEach((w) => {
+        (w.sentenceIds || []).forEach((sid) => {
+          const k = String(sid);
+          if (!SENTENCE_OWNER[k]) SENTENCE_OWNER[k] = String(w.id);
+        });
+      });
+    }
+
+    /** 例句里「所搭配的那个单词」标成淡蓝色，一眼看出该回退到哪个词条 */
+    function markOwnerWord(en, word) {
+      if (!en || !word) return en || "";
+      // 逐个字符转义正则元字符（不用字符类，避免模板字符串里的反斜杠地狱）
+      const escRe = function (s) {
+        return String(s).split("").map(function (ch) {
+          return "\\^$.|?*+()[]{}".indexOf(ch) >= 0 ? "\\" + ch : ch;
+        }).join("");
+      };
+      try {
+        return String(en).replace(
+          new RegExp("\\b(" + escRe(word) + ")\\b", "gi"),
+          '<span class="bg-sky-100 text-sky-900 px-1 py-0.5 rounded font-semibold border-b-2 border-sky-400">$1</span>'
+        );
+      } catch (e) {
+        return String(en);
+      }
+    }
+
+    /** 单词关联的第一条例句 */
+    function firstSentenceOfWord(word) {
+      const ids = (word && word.sentenceIds) || [];
+      for (const sid of ids) {
+        const hit = SENTENCE_INDEX[String(sid)];
+        if (hit) return hit;
+      }
+      return null;
+    }
+
+    /** 句子里的单词对象（按 wordIds 顺序） */
+    function wordsOfSentence(sentence) {
+      return ((sentence && sentence.wordIds) || []).map((id) => WORDS_BY_ID[id]).filter(Boolean);
+    }
+
+    /** 单词卡里的「例句 + 跳转课文页」 */
+    function wordExampleHtml(word) {
+      const hit = firstSentenceOfWord(word);
+      if (!hit) {
+        return '<div class="mt-2 text-[11px] text-stone-400">这个单词还没有关联例句</div>';
+      }
+      const s = hit.sentence;
+      return (
+        '<div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">' +
+        '<span class="text-stone-700 font-semibold text-xs sm:text-sm">例句：</span>' +
+        '<span class="text-stone-600 italic text-xs sm:text-sm">"' + markOwnerWord(s.en, word && word.word) + '"</span>' +
+        '<span class="trans-text text-stone-500 font-normal text-xs ' + (showTranslations ? "" : "hidden") + '">（' + s.cn + '）</span>' +
+        '<button onclick="event.stopPropagation(); jumpToSentence(\'' + String(s.id) + '\')" title="跳到课文页看这条例句" ' +
+        'class="ml-1 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-semibold transition shrink-0">' +
+        '<span>去课文页看例句</span><i data-lucide="arrow-right" class="w-3 h-3"></i></button>' +
+        '</div>'
+      );
+    }
+
+    const DataService = {
+      /** 调云函数，返回 data 部分 */
+      async fetchContent(action = "getAll", timeout = 12000) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
+        try {
+          const res = await fetch(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+            signal: controller.signal
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const json = await res.json();
+          if (json.code !== 0) throw new Error(json.message || "接口返回异常");
+          return json.data;
+        } catch (err) {
+          if (err.name === "AbortError") throw new Error("请求超时");
+          throw err;
+        } finally {
+          clearTimeout(timer);
+        }
+      },
+
+      readCache() {
+        try {
+          const raw = localStorage.getItem(CACHE_KEY);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return parsed && parsed.data ? parsed : null;
+        } catch (e) {
+          return null;
+        }
+      },
+
+      writeCache(data) {
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data }));
+        } catch (e) {
+          /* 本地存储不可用或超限时忽略，不影响在线使用 */
+        }
+      },
+
+      /** 把接口数据灌进全局变量 */
+      apply(data) {
+        THEMES_DATA = Array.isArray(data.themes) ? data.themes : [];
+        PHONETICS_DATA = Array.isArray(data.phonetics) ? data.phonetics : [];
+        WORDS_DATA = Array.isArray(data.words) ? data.words : [];
+        const lessons = Array.isArray(data.lessons) ? data.lessons : [];
+        LESSONS_DATA = lessons.reduce((acc, item) => {
+          acc[item.id] = item;
+          return acc;
+        }, {});
+        rebuildIndexes();
+        // 媒体配置（媒体基础地址等）也从后台读，改地址不用改页面
+        if (data.config && typeof data.config === "object") {
+          MEDIA_CONFIG = Object.assign({ mediaBase: "", preferRealAudio: true }, data.config);
+        }
+      },
+
+      /** 全量重绘。
+          每个模块单独 try/catch：某一个模块的数据或代码出问题，
+          只影响那一个模块，不会把整页卡在加载遮罩上。 */
+      renderAll() {
+        const steps = [
+          ["分类计数", () => updateCategoryCounters()],
+          ["课文按钮", () => renderLessonSwitcher()],
+          ["主题下拉", () => renderThemeOptions()],
+          ["音标网格", () => renderPhoneticsGrid()],
+          ["单词卡片", () => renderWordsCards()],
+          ["课文内容", () => { ensureCurrentLesson(); loadLesson(currentLessonId); }],
+          ["状态浮标", () => updateDataStatus()]
+        ];
+        const failed = [];
+        steps.forEach(([name, fn]) => {
+          try {
+            fn();
+          } catch (e) {
+            failed.push(name + "（" + (e && e.message ? e.message : e) + "）");
+            console.error("[渲染失败] " + name, e);
+          }
+        });
+        if (window.lucide) lucide.createIcons();
+        if (failed.length) {
+          console.warn("[渲染失败模块]", failed);
+          showToast("部分模块渲染失败：" + failed.join("、"));
+        }
+        return failed;
+      },
+
+      /** 首屏：有缓存先秒开再静默刷新；无缓存则等接口 */
+      async boot() {
+        const cached = this.readCache();
+        if (cached) {
+          this.apply(cached.data);
+          dataSource = "cache";
+          try { this.renderAll(); } catch (e) { console.error(e); }
+          hideLoadingOverlay();
+          this.fetchContent()
+            .then((data) => {
+              this.apply(data);
+              this.writeCache(data);
+              dataSource = "cloud";
+              try { this.renderAll(); } catch (e) { console.error(e); }
+            })
+            .catch(() => updateDataStatus("cache"));
+          return;
+        }
+
+        showLoadingOverlay("正在从云端加载课程内容…");
+        let data;
+        try {
+          data = await this.fetchContent();
+        } catch (err) {
+          showDataError(err);
+          return;
+        }
+
+        // 数据已经拿到了：后面无论渲染出什么问题，都不能再停在加载遮罩上
+        this.apply(data);
+        this.writeCache(data);
+        dataSource = "cloud";
+        try {
+          this.renderAll();
+        } catch (e) {
+          console.error("[渲染异常]", e);
+          showToast("内容渲染出错：" + (e && e.message ? e.message : e));
+        } finally {
+          hideLoadingOverlay();
+        }
+      },
+
+      /** 手动强制刷新（忽略缓存） */
+      async refresh() {
+        showLoadingOverlay("正在重新拉取云端内容…");
+        try {
+          const data = await this.fetchContent();
+          this.apply(data);
+          this.writeCache(data);
+          dataSource = "cloud";
+          try {
+            this.renderAll();
+          } catch (e) {
+            console.error("[渲染异常]", e);
+            showToast("内容渲染出错：" + (e && e.message ? e.message : e));
+          }
+          showToast("内容已更新至最新版本");
+        } catch (err) {
+          showToast("刷新失败：" + err.message);
+          if (!PHONETICS_DATA.length) showDataError(err);
+        } finally {
+          hideLoadingOverlay();
+        }
+      }
+    };
+    window.DataService = DataService;
+
+    /* ---------------- 加载 / 错误 / 状态 三件套 ---------------- */
+    function showLoadingOverlay(text) {
+      const errBox = document.getElementById("data-error");
+      if (errBox) errBox.classList.add("hidden");
+      const txt = document.getElementById("data-loading-text");
+      if (txt && text) txt.textContent = text;
+      const box = document.getElementById("data-loading");
+      if (box) box.classList.remove("hidden");
+    }
+
+    function hideLoadingOverlay() {
+      const box = document.getElementById("data-loading");
+      if (box) box.classList.add("hidden");
+    }
+
+    function showDataError(err) {
+      hideLoadingOverlay();
+      const msg = document.getElementById("data-error-message");
+      if (msg) msg.textContent = "内容加载失败：" + (err && err.message ? err.message : String(err));
+      const box = document.getElementById("data-error");
+      if (box) box.classList.remove("hidden");
+      if (window.lucide) lucide.createIcons();
+      updateDataStatus("error");
+    }
+
+    function updateDataStatus(state) {
+      const pill = document.getElementById("data-status");
+      if (!pill) return;
+      const key = state || dataSource;
+      const map = {
+        cloud: {
+          color: "bg-emerald-500",
+          label: `云端已同步 · ${PHONETICS_DATA.length} 音标 / ${WORDS_DATA.length} 词 / ${Object.keys(LESSONS_DATA).length} 课文`
+        },
+        cache: { color: "bg-amber-500", label: "本地缓存（正在同步云端…）" },
+        error: { color: "bg-rose-500", label: "云端不可达（展示缓存内容）" }
+      };
+      const conf = map[key] || map.cloud;
+      const dot = pill.querySelector("[data-status-dot]");
+      const text = pill.querySelector("[data-status-text]");
+      if (dot) dot.className = "h-2 w-2 rounded-full " + conf.color;
+      if (text) text.textContent = conf.label;
+    }
+
+    /** 音标分类按钮上的数量 / 数量徽标跟随云端内容自动同步 */
+    function updateCategoryCounters() {
+      if (!PHONETICS_DATA.length) return;
+      const votes = PHONETICS_DATA.filter((i) => i.category === "vowels").length;
+      const cons = PHONETICS_DATA.filter((i) => i.category === "consonants").length;
+
+      const badge = document.getElementById("phonetics-count-badge");
+      if (badge) badge.textContent = PHONETICS_DATA.length + " 国际音标表";
+
+      const summary = document.getElementById("phonetics-summary");
+      if (summary) summary.textContent = "收录 " + votes + " 个元音与 " + cons + " 个辅音。";
+
+      const btns = document.querySelectorAll(".ph-filter-btn");
+      if (!btns.length) return;
+      const values = [
+        PHONETICS_DATA.length,
+        votes,
+        PHONETICS_DATA.filter((i) => i.type === "monophthongs").length,
+        PHONETICS_DATA.filter((i) => i.type === "diphthongs").length,
+        cons
+      ];
+      const labels = ["全部", "元音", "单元音", "双元音", "辅音"];
+      btns.forEach((btn, i) => {
+        if (values[i] === undefined) return;
+        btn.textContent = labels[i] + " (" + values[i] + ")";
+      });
+    }
+
+    /** 课文切换按钮按云端课文列表生成，新增课文无需改页面 */
+    function renderLessonSwitcher() {
+      const box = document.getElementById("lesson-switch-buttons");
+      if (!box) return;
+      const lessons = Object.values(LESSONS_DATA).sort((a, b) => (a.order || 0) - (b.order || 0));
+      box.innerHTML = lessons
+        .map((lesson, idx) => {
+          const num = lesson.order || idx + 1;
+          return `<button onclick="loadLesson('${lesson.id}')" id="btn-${lesson.id}" title="${lesson.title || ''}" class="lesson-switch-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 text-stone-600 hover:bg-stone-200">第 ${num} 课</button>`;
+        })
+        .join("");
+      if (!box.dataset.dotsWired) {
+        box.dataset.dotsWired = "1";
+        box.addEventListener("scroll", updateLessonDots, { passive: true });
+        window.addEventListener("resize", updateLessonDots);
+      }
+      updateLessonDots();
+    }
+
+    /* ---- 课文滚筒：左右翻页 + 底部圆点（同 iOS 桌面分页指示器） ---- */
+
+    /** 按可视宽度滚一屏（留一点重叠，避免漏掉边缘按钮） */
+    function scrollLessons(dir) {
+      const strip = document.getElementById("lesson-switch-buttons");
+      if (!strip) return;
+      const step = dir * strip.clientWidth * 0.9;
+      if (typeof strip.scrollBy === "function") strip.scrollBy({ left: step, behavior: "smooth" });
+      else strip.scrollLeft = (strip.scrollLeft || 0) + step;
+    }
+
+    /** 一屏一个圆点，当前屏放大成小横条 */
+    function updateLessonDots() {
+      const strip = document.getElementById("lesson-switch-buttons");
+      const dots = document.getElementById("lesson-dots");
+      if (!strip || !dots) return;
+      const w = strip.clientWidth || 1;
+      const pages = Math.max(1, Math.ceil((strip.scrollWidth - 4) / w));
+      const cur = Math.min(pages - 1, Math.max(0, Math.round(strip.scrollLeft / w)));
+      if (dots.dataset.pages !== String(pages) || dots.dataset.cur !== String(cur)) {
+        dots.dataset.pages = String(pages);
+        dots.dataset.cur = String(cur);
+        dots.innerHTML = Array.from({ length: pages }, (_, i) =>
+          '<span class="lesson-dot' + (i === cur ? ' is-on' : '') + '"></span>'
+        ).join("");
+      }
+      const prev = document.getElementById("lesson-prev");
+      const next = document.getElementById("lesson-next");
+      if (prev) prev.disabled = cur <= 0;
+      if (next) next.disabled = cur >= pages - 1;
+    }
+
+    /** 切课时把当前课的按钮滚到滚筒中间 */
+    function scrollActiveLessonIntoView(lessonId) {
+      const strip = document.getElementById("lesson-switch-buttons");
+      const btn = document.getElementById("btn-" + lessonId);
+      if (!strip || !btn) return;
+      const target = btn.offsetLeft - (strip.clientWidth - btn.offsetWidth) / 2;
+      if (typeof strip.scrollTo === "function") strip.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+      else strip.scrollLeft = Math.max(0, target);
+      setTimeout(updateLessonDots, 340);
+    }
+
+    /** 单词页的主题下拉：全部主题 + 云端配置的每个主题 */
+    function renderThemeOptions() {
+      const select = document.getElementById("lesson-filter-select");
+      if (!select) return;
+      const current = select.value || "all";
+      const themes = sortedThemes();
+      select.innerHTML =
+        '<option value="all">全部主题（' + WORDS_DATA.length + ' 个单词）</option>' +
+        themes.map((t) => {
+          const n = WORDS_DATA.filter((w) => w.theme === t.id).length;
+          return `<option value="${t.id}">${t.name}（${n}）</option>`;
+        }).join("");
+      select.value = themes.some((t) => t.id === current) ? current : "all";
+      const first = select.options[0];
+      if (first) first.textContent = "全部主题（" + WORDS_DATA.length + " 个单词）";
+    }
+
+    function ensureCurrentLesson() {
+      const ids = Object.keys(LESSONS_DATA);
+      if (!ids.length) return;
+      const sorted = Object.values(LESSONS_DATA).sort((a, b) => (a.order || 0) - (b.order || 0));
+      if (!LESSONS_DATA[currentLessonId]) currentLessonId = sorted[0].id;
+    }
+
+
+    // Application Global State
+    let currentTab = "phonetics";
+    let currentLessonId = "lesson-1";
+    let showTranslations = true;
+    let speechRate = 1.0;
+    let selectedPhoneticFilter = "all";
+    // Mutually exclusive expand state: only one word can have its breakdown open at a time
+    let activeExpandedWordId = null;
+
+    // Audio Engine: Native Web Speech API with seamless MP3 interface placeholder
+    const AudioEngine = {
+      synth: window.speechSynthesis,
+      
+      speak(text, rate = null) {
+        if (!this.synth) {
+          showToast("浏览器暂不支持内置朗读功能");
+          return;
+        }
+        this.synth.cancel(); // Stop any pending utterance
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "en-US";
+        utterance.rate = rate || speechRate;
+        utterance.pitch = 1.0;
+        
+        // Show subtle notification toast
+        showToast(`正在朗读: "${text}"`);
+        this.synth.speak(utterance);
+      },
+
+      /*
+        CUSTOM MP3 + TIMESTAMP EXTENSION INTERFACE:
+        When custom mp3 audio files and timestamps are uploaded:
+        AudioEngine.playMp3Segment(audioUrl, startSeconds, durationSeconds)
+      */
+      /** 当前播放倍速（0.5 / 0.8 / 1.0），由页头选择器写进全局 speechRate */
+      rate() {
+        const r = parseFloat(typeof speechRate !== "undefined" ? speechRate : 1);
+        return Number.isFinite(r) && r > 0 ? r : 1;
+      },
+
+      /** 把倍速套到真实音频上（并保持音调不变），返回倍速值 */
+      applyRate(audio) {
+        const r = this.rate();
+        try {
+          audio.playbackRate = r;
+          audio.preservesPitch = true;
+          audio.mozPreservesPitch = true;
+          audio.webkitPreservesPitch = true;
+        } catch (e) {}
+        return r;
+      },
+
+      playMp3Segment(audioUrl, start, duration) {
+        // 真实音频 + 时间戳片段播放（课文整篇 mp3 配 sentences[].timestamp 使用）
+        if (!isPlayableMedia(audioUrl)) return;
+        if (!this._audio) this._audio = new Audio();
+        const audio = this._audio;
+        try { audio.pause(); } catch (e) {}
+        audio.src = resolveMediaUrl(audioUrl);
+        const r = this.applyRate(audio);
+        try { audio.currentTime = start || 0; } catch (e) {}
+        audio.play().catch(function () {});
+        clearTimeout(this._segTimer);
+        if (duration) {
+          // 倍速播放时真实耗时 = 媒体时长 / 倍速，否则会提前切段
+          this._segTimer = setTimeout(function () { try { audio.pause(); } catch (e) {} }, (duration * 1000) / r);
+        }
+      },
+
+      /** 有真实音频就播真实音频；没配置或加载失败，才退回浏览器合成发音 */
+      playOrSpeak(audioUrl, fallbackText, rate) {
+        if (!isPlayableMedia(audioUrl)) { this.speak(fallbackText, rate || null); return; }
+        if (!this._audio) this._audio = new Audio();
+        const audio = this._audio;
+        try { audio.pause(); } catch (e) {}
+        audio.onerror = null;
+        audio.onended = null;
+        audio.onerror = () => { showToast("音频加载失败，改用合成发音"); this.speak(fallbackText, rate || null); };
+        audio.onended = () => showToast("播放完毕");
+        audio.src = resolveMediaUrl(audioUrl);
+        this.applyRate(audio);
+        showToast("正在播放音频…");
+        const p = audio.play();
+        if (p && p.catch) p.catch(() => { this.speak(fallbackText, rate || null); });
+      },
+
+      /** 播放音频里的 [start, end] 片段（秒）。用 timeupdate 精确在 end 处停下 */
+      playSegment(audioUrl, start, end, fallbackText) {
+        if (!isPlayableMedia(audioUrl)) { if (fallbackText) this.speak(fallbackText, 0.85); return; }
+        if (!this._audio) this._audio = new Audio();
+        const audio = this._audio;
+        const target = resolveMediaUrl(audioUrl);
+        try { audio.pause(); } catch (e) {}
+        audio.onended = null;
+        audio.onerror = null;
+        audio.ontimeupdate = null;
+        // 倍速：真实音频直接改 playbackRate，停止定时器要按倍速换算
+        const rt = this.applyRate(audio);
+
+        const stop = () => {
+          try { audio.pause(); } catch (e) {}
+          audio.ontimeupdate = null;
+          clearTimeout(this._segTimer);
+        };
+
+        const begin = () => {
+          try { audio.currentTime = start || 0; } catch (e) {}
+          clearTimeout(this._segTimer);
+          // 兜底：timeupdate 粒度只有 250ms，万一定时器没跑起来也能停
+          audio.ontimeupdate = () => {
+            if (typeof end === "number" && end > 0 && audio.currentTime >= end) stop();
+          };
+          const p = audio.play();
+          if (p && p.then) {
+            p.then(() => {
+              // 主路径：play() 真正开始后，按剩余媒体时长 ÷ 倍速 精确定时停止（约 20ms 精度）
+              if (typeof end === "number" && end > 0) {
+                const remain = Math.max(0, (end - audio.currentTime) * 1000) / rt + 20;
+                this._segTimer = setTimeout(stop, remain);
+              }
+            }).catch(() => { if (fallbackText) this.speak(fallbackText, 0.85); });
+          }
+        };
+
+        if (audio.getAttribute("src") !== target) {
+          audio.onerror = () => { if (fallbackText) { showToast("音频加载失败，改用合成发音"); this.speak(fallbackText, 0.85); } };
+          audio.setAttribute("src", target);
+          audio.addEventListener("loadedmetadata", begin, { once: true });
+          audio.load();
+        } else if (audio.readyState >= 1) {
+          begin();
+        } else {
+          audio.addEventListener("loadedmetadata", begin, { once: true });
+        }
+      },
+
+      /**
+       * 顺序播放同一文件里的多段音频（一个词条可能有多个读音，如 a / an 读两遍）。
+       * 每段到 end 就跳到下一段；全部放完才停。
+       */
+      playClips(audioUrl, clips, fallbackText) {
+        if (!isPlayableMedia(audioUrl) || !clips || !clips.length) {
+          if (fallbackText) this.speak(fallbackText, 0.85);
+          return;
+        }
+        if (!this._audio) this._audio = new Audio();
+        const audio = this._audio;
+        const target = resolveMediaUrl(audioUrl);
+        const list = clips.slice();
+        const self = this;
+        const rt = this.applyRate(audio);
+
+        const clearSeg = () => { clearTimeout(self._segTimer); };
+        const halt = () => {
+          audio.ontimeupdate = null;
+          clearSeg();
+          try { audio.pause(); } catch (e) {}
+        };
+
+        const playAt = (idx) => {
+          if (idx >= list.length) { halt(); return; }
+          const c = list[idx];
+          const dur = Math.max(0.15, (c.end || 0) - (c.start || 0));
+          try { audio.currentTime = c.start || 0; } catch (e) {}
+          clearSeg();
+          audio.ontimeupdate = () => {
+            if (c.end && audio.currentTime >= c.end) { audio.ontimeupdate = null; playAt(idx + 1); }
+          };
+          // 兜底：timeupdate 粒度只有 250ms，用定时器保证按时切段
+          self._segTimer = setTimeout(() => { audio.ontimeupdate = null; playAt(idx + 1); }, (dur * 1000) / rt + 80);
+          const p = audio.play();
+          if (p && p.catch) p.catch(() => { if (fallbackText && idx === 0) this.speak(fallbackText, 0.85); });
+        };
+
+        if (audio.getAttribute("src") !== target) {
+          audio.onerror = () => {
+            if (fallbackText) { showToast("音频加载失败，改用合成发音"); self.speak(fallbackText, 0.85); }
+          };
+          audio.setAttribute("src", target);
+          const onReady = () => { audio.removeEventListener("loadedmetadata", onReady); playAt(0); };
+          audio.addEventListener("loadedmetadata", onReady, { once: true });
+          audio.load();
+        } else if (audio.readyState >= 1) {
+          playAt(0);
+        } else {
+          const onReady2 = () => { audio.removeEventListener("loadedmetadata", onReady2); playAt(0); };
+          audio.addEventListener("loadedmetadata", onReady2, { once: true });
+        }
+      },
+
+      /** 播放某个音标的真实发音片段（按 symbol 定位，没有真实音频就退回合成发音） */
+      playPhonetic(symbol) {
+        const list = PHONETICS_DATA || [];
+        const key = String(symbol || "").replace(/[/]/g, "").trim();
+        const item =
+          list.find((p) => String(p.symbol || "").replace(/[/]/g, "").trim() === key) ||
+          list.find((p) => p.id === symbol);
+        const fallback = key;
+        if (!item || !item.audioUrl) { this.speak(fallback, 0.85); return; }
+        const ts = item.timestamp || {};
+        this.playSegment(item.audioUrl, ts.start, ts.end, fallback);
+      },
+
+      stopAll() {
+        if (this._audio) { try { this._audio.pause(); } catch (e) {} }
+        if (this.synth) this.synth.cancel();
+      }
+    };
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      const msgElem = document.getElementById("toast-message");
+      if (!toast || !msgElem) return;
+      msgElem.textContent = msg;
+      toast.classList.remove("translate-y-20", "opacity-0");
+      toast.classList.add("translate-y-0", "opacity-100");
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        toast.classList.add("translate-y-20", "opacity-0");
+        toast.classList.remove("translate-y-0", "opacity-100");
+      }, 2200);
+    }
+
+    // Tab Switching Logic
+    function switchTab(tabName) {
+      currentTab = tabName;
+      document.querySelectorAll(".tab-pane").forEach(pane => pane.classList.add("hidden"));
+      const activePane = document.getElementById(`tab-${tabName}`);
+      if (activePane) activePane.classList.remove("hidden");
+
+      // Update Header button styles
+      document.querySelectorAll(".nav-tab").forEach(btn => {
+        btn.classList.remove("bg-white", "text-stone-900", "shadow-sm");
+        btn.classList.add("text-stone-600");
+      });
+      const activeBtn = document.getElementById(`nav-btn-${tabName}`);
+      if (activeBtn) {
+        activeBtn.classList.add("bg-white", "text-stone-900", "shadow-sm");
+        activeBtn.classList.remove("text-stone-600");
+      }
+
+      // Re-trigger layout updates
+      if (tabName === "phonetics") renderPhoneticsGrid();
+      if (tabName === "words") renderWordsCards();
+      if (tabName === "lessons") loadLesson(currentLessonId);
+
+      // Re-render lucide icons
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // Global Translation Switcher
+    function toggleGlobalTranslation() {
+      showTranslations = !showTranslations;
+      const btnText = document.getElementById("translation-btn-text");
+      if (btnText) {
+        btnText.textContent = `双语显示: ${showTranslations ? '开' : '关'}`;
+      }
+      
+      // Update visibility across sentences and cards
+      document.querySelectorAll(".trans-text").forEach(el => {
+        if (showTranslations) {
+          el.classList.remove("hidden");
+        } else {
+          el.classList.add("hidden");
+        }
+      });
+    }
+
+    // Module 1: Phonetics Render
+    function filterPhonetics(type) {
+      selectedPhoneticFilter = type;
+      document.querySelectorAll(".ph-filter-btn").forEach(b => {
+        b.classList.remove("bg-sky-600", "text-white");
+        b.classList.add("bg-stone-100", "text-stone-600");
+      });
+      event.target.classList.remove("bg-stone-100", "text-stone-600");
+      event.target.classList.add("bg-sky-600", "text-white");
+      renderPhoneticsGrid();
+    }
+
+    function renderPhoneticsGrid() {
+      const container = document.getElementById("phonetics-grid");
+      if (!container) return;
+
+      const filtered = PHONETICS_DATA.filter(item => {
+        if (selectedPhoneticFilter === "all") return true;
+        if (selectedPhoneticFilter === "vowels") return item.category === "vowels";
+        if (selectedPhoneticFilter === "consonants") return item.category === "consonants";
+        return item.type === selectedPhoneticFilter;
+      });
+
+      container.innerHTML = filtered.map(item => `
+        <div class="bg-white rounded-2xl p-4 border border-stone-200/80 hover:border-sky-300 hover:shadow-md transition-all duration-200 flex flex-col justify-between group cursor-pointer relative"
+             onclick="openPhoneticModal('${item.id}')">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-medium px-2 py-0.5 rounded-md ${item.category === 'vowels' ? 'bg-amber-50 text-amber-700' : 'bg-sky-50 text-sky-700'}">
+                ${item.name}
+              </span>
+              <button onclick="event.stopPropagation(); AudioEngine.playPhonetic('${item.symbol}')" title="发音试听" class="w-7 h-7 rounded-lg bg-stone-50 hover:bg-sky-100 text-stone-500 hover:text-sky-700 flex items-center justify-center transition">
+                <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            
+            <div class="text-center py-2">
+              <div class="font-serif font-bold text-2xl text-stone-900 tracking-wide group-hover:text-sky-600 transition">
+                ${item.symbol}
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-stone-100 mt-1">
+            <div class="text-xs text-stone-500 truncate text-center">
+              例: <span class="font-medium text-stone-700 font-mono">${item.example}</span>
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function openPhoneticModal(id) {
+      const item = PHONETICS_DATA.find(p => p.id === id);
+      if (!item) return;
+
+      const modal = document.getElementById("phonetic-modal");
+      const content = document.getElementById("phonetic-modal-content");
+      if (!modal || !content) return;
+
+      content.innerHTML = `
+        <div class="text-center mb-4">
+          <span class="text-xs px-2.5 py-1 rounded-full ${item.category === 'vowels' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'} font-semibold">
+            ${item.category === 'vowels' ? '元音类别' : '辅音类别'} · ${item.name}
+          </span>
+          <h3 class="text-4xl font-serif font-bold text-stone-900 mt-3 tracking-wider">${item.symbol}</h3>
+        </div>
+
+        <div class="space-y-4 text-left">
+          <div class="bg-stone-50 p-3.5 rounded-xl border border-stone-200">
+            <h4 class="text-xs font-bold text-stone-700 flex items-center space-x-1.5 mb-1.5">
+              <i data-lucide="smile" class="w-4 h-4 text-sky-600"></i>
+              <span>发音口型与要领:</span>
+            </h4>
+            <p class="text-xs text-stone-600 leading-relaxed">${item.mouth}</p>
+          </div>
+
+          <div>
+            <h4 class="text-xs font-bold text-stone-700 mb-2">典型代表单词:</h4>
+            <div class="flex flex-wrap gap-2">
+              ${item.words.map(w => `
+                <button onclick="playWordAudio('${w}')" class="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-sky-50 hover:text-sky-700 border border-stone-200 text-xs font-medium flex items-center space-x-1 transition">
+                  <i data-lucide="volume-1" class="w-3 h-3 text-stone-400"></i>
+                  <span>${w}</span>
+                </button>
+              `).join("")}
+            </div>
+          </div>
+
+          <div class="pt-2 flex justify-end">
+            <button onclick="AudioEngine.playPhonetic('${item.symbol}')" class="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-medium text-xs flex items-center justify-center space-x-2 shadow-sm transition">
+              <i data-lucide="volume-2" class="w-4 h-4"></i>
+              <span>播放此音标标准发音</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      modal.classList.remove("hidden");
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closePhoneticModal() {
+      const modal = document.getElementById("phonetic-modal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    // Accordion toggle: only allows maximum 1 word breakdown expanded at any time
+    function toggleWordExpand(wordId) {
+      if (activeExpandedWordId === wordId) {
+        activeExpandedWordId = null; // collapse if clicking the same one
+      } else {
+        activeExpandedWordId = wordId; // expand this one and close any previously open one
+      }
+      renderWordsCards();
+    }
+
+    // Direct jump from other sections (e.g. Lesson words) to expand a target word
+    function openWordInPhonics(wordId) {
+      activeExpandedWordId = wordId;
+      switchTab('words');
+      setTimeout(() => {
+        const el = document.getElementById(`word-card-${wordId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 120);
+    }
+
+    // Module 2: Phonics Cards Render (Collapsible Accordion layout, single-expand only)
+    function renderWordsCards() {
+      const container = document.getElementById("words-cards-container");
+      if (!container) return;
+
+      const themeFilter = document.getElementById("lesson-filter-select")?.value || "all";
+      const searchTerm = document.getElementById("word-search-input")?.value.toLowerCase().trim() || "";
+
+      // 按主题归类显示：先按主题顺序，再按词条顺序
+      const themeRank = {};
+      sortedThemes().forEach((t, i) => { themeRank[t.id] = i; });
+      const rankOf = (id) => (themeRank[id] === undefined ? 99 : themeRank[id]);
+
+      const filtered = WORDS_DATA
+        .filter(w => themeFilter === "all" || w.theme === themeFilter)
+        .filter(w => {
+          if (!searchTerm) return true;
+          return [w.word, w.meaning, w.cn, w.ipa, themeName(w.theme)].join(" ").toLowerCase().includes(searchTerm);
+        })
+        .sort((a, b) => rankOf(a.theme) - rankOf(b.theme) || (a.order || 0) - (b.order || 0));
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl p-8 text-center border border-dashed border-stone-300">
+            <i data-lucide="search-x" class="w-8 h-8 text-stone-400 mx-auto mb-2"></i>
+            <p class="text-sm text-stone-500">没有找到匹配的单词</p>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      const pageItems = filtered.slice(0, wordsShown);
+      const remain = filtered.length - pageItems.length;
+      const listHead = '<div class="text-xs text-stone-500 pb-0.5">' +
+        (themeFilter === "all" ? "全部主题" : themeName(themeFilter)) +
+        '：共 ' + filtered.length + ' 个单词' +
+        (remain > 0 ? '，当前显示前 ' + pageItems.length + ' 个' : '') +
+        '</div>';
+      const moreHtml = remain > 0
+        ? '<div class="pt-1"><button onclick="showMoreWords()" class="w-full py-2.5 rounded-2xl bg-white border-2 border-dashed border-stone-300 hover:border-amber-400 hover:bg-amber-50 text-stone-600 hover:text-amber-800 text-sm font-semibold transition">加载更多（还有 ' + remain + ' 个）</button></div>'
+        : '';
+
+      container.innerHTML = listHead + pageItems.map(wordObj => {
+        const isExpanded = (activeExpandedWordId === wordObj.id);
+        // 主题词条不一定有自然拼读拆解数据，兜底成空数组，避免整页渲染中断
+        const bds = Array.isArray(wordObj.breakdowns) ? wordObj.breakdowns : [];
+        const hasPhonics = bds.length > 0;
+
+        // Build the top word representation with underlined segments
+        const topSegmentsHtml = bds.map((b, idx) => `
+          <span class="inline-block relative px-1 cursor-pointer transition-all duration-200" 
+                id="top-seg-${wordObj.word}-${idx}"
+                onclick="event.stopPropagation(); triggerBreakdownColumn('${wordObj.word}', ${idx}, '${b.soundIpa}', '${b.letter}')">
+            <span class="font-mono text-3xl sm:text-4xl font-extrabold text-stone-900">${b.letter}</span>
+            <span class="block w-full h-1 sm:h-1.5 bg-stone-900 rounded-full mt-1 transition-colors duration-200 underline-bar"></span>
+          </span>
+        `).join("");
+
+        // Build the multi-column breakdown section (单词行 + 箭头 + 音标行)
+        const columnsHtml = bds.map((b, idx) => {
+          return `
+            <div class="diagram-column flex flex-col items-center cursor-pointer group" 
+                 id="col-${wordObj.word}-${idx}"
+                 onclick="event.stopPropagation(); triggerBreakdownColumn('${wordObj.word}', ${idx}, '${b.soundIpa}', '${b.letter}')">
+              
+              <!-- Branching arrow from top word (indicates split) -->
+              <div class="h-6 flex items-center justify-center text-stone-400 group-hover:text-amber-600 transition-colors">
+                <svg class="w-4 h-5 stroke-current fill-none stroke-[2.5]" viewBox="0 0 24 24">
+                  <path d="M12 4v16m0 0l-4-4m4 4l4-4"/>
+                </svg>
+              </div>
+
+              <!-- Row 1: 单词卡片 (Large Letter Box) -->
+              <div class="diagram-letter-box w-20 sm:w-28 h-16 sm:h-20 bg-amber-50/90 border-2 border-amber-300 rounded-2xl flex flex-col items-center justify-center shadow-xs transition-all duration-200">
+                <span class="font-mono font-black text-2xl sm:text-3xl text-amber-950">${b.letter}</span>
+                <span class="text-[10px] text-amber-700/80 font-medium scale-90 sm:scale-100">${b.label}</span>
+              </div>
+
+              <!-- Downward Arrow to Phonetic Symbol (Strictly following the drawing) -->
+              <div class="py-2.5 flex items-center justify-center text-stone-400 diagram-arrow-down transition-all duration-200">
+                <svg class="w-6 h-6 stroke-current fill-none stroke-[2.5]" viewBox="0 0 24 24">
+                  <path d="M12 3v18m0 0l-5-5m5 5l5-5"/>
+                </svg>
+              </div>
+
+              <!-- Row 2: 音标卡片 (Large Sound Box) -->
+              <div class="diagram-sound-box w-20 sm:w-28 h-16 sm:h-20 rounded-2xl flex flex-col items-center justify-center shadow-xs transition-all duration-200 ${b.silent ? 'bg-stone-100/90 border-2 border-dashed border-stone-300' : 'bg-sky-50/90 border-2 border-sky-300'}">
+                ${b.silent
+                  ? '<span class="text-xs font-bold text-stone-400 tracking-wider">不发音</span>'
+                  : `<span class="font-mono font-bold text-2xl sm:text-3xl text-sky-950">${b.soundDisplay}</span><span class="font-serif text-[11px] text-sky-700 font-semibold tracking-wider">${b.soundIpa || ''}</span>`}
+              </div>
+
+            </div>
+          `;
+        }).join("");
+
+        return `
+          <!-- SINGLE COLLAPSIBLE WORD CARD -->
+          <div id="word-card-${wordObj.id}" 
+               class="word-card-container bg-white rounded-3xl border-2 ${isExpanded ? 'border-stone-800 shadow-md ring-2 ring-amber-400/30' : 'border-stone-200 hover:border-stone-400 shadow-xs'} overflow-hidden">
+            
+            <!-- HEADER BAR: Visible by default (Strictly follows user mockup image) -->
+            <div class="word-card-header p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer select-none ${isExpanded ? 'bg-stone-50/60 border-b border-stone-200' : 'hover:bg-stone-50/40'}"
+                 onclick="toggleWordExpand('${wordObj.id}')">
+              
+              <!-- Left Part: Orange Audio Icon, Word, IPA, POS Tag, and Meaning/Example -->
+              <div class="flex items-center space-x-3.5 flex-1 min-w-0">
+                <!-- Large Orange Rounded Speaker Button -->
+                <button onclick="event.stopPropagation(); playWordAudio('${wordObj.id}')" 
+                        title="朗读全词发音" 
+                        class="w-12 h-12 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white flex items-center justify-center shrink-0 transition shadow-md shadow-amber-500/20">
+                  <i data-lucide="volume-2" class="w-6 h-6"></i>
+                </button>
+
+                <!-- Word Text & Bilingual Details -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-display font-extrabold text-2xl sm:text-3xl text-stone-900 tracking-tight">${wordObj.word}</span>
+                    <span class="font-serif text-lg font-bold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-lg border border-sky-200">${wordObj.ipa}</span>
+                    <span class="text-xs px-2.5 py-0.5 rounded-md bg-stone-100 text-stone-600 font-mono font-semibold border border-stone-200">${wordObj.pos}</span>
+                  </div>
+                  <div class="text-xs sm:text-sm font-medium text-stone-600 mt-1.5 leading-relaxed">
+                    <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                      <span>释义：<strong class="text-stone-900">${wordObj.meaning}</strong></span>
+                      <span class="text-stone-300 hidden sm:inline">|</span>
+                      <span class="text-[11px] px-2 py-0.5 rounded-md font-semibold ${themeChipClass(wordObj.theme)}">${themeName(wordObj.theme)}</span>
+                    </div>
+                    ${wordExampleHtml(wordObj)}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Part: 有拆解就显示图解入口，没有就显示主题标签 -->
+              ${hasPhonics ? `
+              <div class="flex items-center space-x-3 self-end md:self-auto bg-stone-50 px-4 py-2.5 rounded-2xl border ${isExpanded ? 'border-amber-300 bg-amber-50/50' : 'border-stone-200 hover:border-amber-200'} transition shrink-0">
+                <div class="w-12 h-12 flex items-center justify-center shrink-0">
+                  ${wordObj.svgIcon || '<i data-lucide="shapes" class="w-8 h-8 text-stone-300"></i>'}
+                </div>
+                <div class="text-left">
+                  <span class="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full inline-block">自然拼读图解</span>
+                  <div class="flex items-center space-x-1 text-xs text-stone-500 font-medium mt-1">
+                    <span class="${isExpanded ? 'text-amber-800 font-bold' : ''}">${isExpanded ? '点击收起图解' : '点击展开图解'}</span>
+                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-amber-600' : 'text-stone-400'}"></i>
+                  </div>
+                </div>
+              </div>` : `
+              <div class="flex items-center gap-2 self-end md:self-auto bg-stone-50 px-3.5 py-2.5 rounded-2xl border border-stone-200 shrink-0">
+                <span class="text-[11px] px-2.5 py-1 rounded-full font-semibold ${themeChipClass(wordObj.theme)}">${themeName(wordObj.theme)}</span>
+                <span class="text-[11px] text-stone-400">暂无拆解图解</span>
+              </div>`}
+
+            </div>
+
+            <!-- COLLAPSIBLE ACCORDION BODY: Large Phonics Breakdown Diagram (Only rendered when expanded) -->
+            ${isExpanded && hasPhonics ? `
+              <div class="p-5 sm:p-7 bg-white border-t border-stone-100 animate-in slide-in-from-top-2 fade-in duration-200">
+                <div class="bg-gradient-to-b from-stone-50/80 via-white to-stone-50/50 rounded-2xl border-2 border-stone-200 p-5 sm:p-8 flex flex-col items-center">
+                  
+                  <!-- 1. Top Level: Full word with segmented underlines -->
+                  <div class="text-center mb-2">
+                    <span class="text-xs font-bold text-stone-400 uppercase tracking-widest block mb-1">整词音形对应结构</span>
+                    <div class="inline-flex items-center justify-center p-2 rounded-xl bg-white border border-stone-200/80 shadow-2xs">
+                      ${topSegmentsHtml}
+                    </div>
+                  </div>
+
+                  <!-- 2. Two-Row Diagram Flow (单词行 & 音标行，配大号标签与竖向箭头) -->
+                  <div class="w-full max-w-2xl mt-2 flex items-center justify-center overflow-x-auto py-2">
+                    
+                    <!-- Left Labels Column: 单词: 和 音标: -->
+                    <div class="flex flex-col justify-between py-6 mr-3 sm:mr-6 text-stone-800 shrink-0">
+                      <div class="h-6"></div>
+                      <div class="h-16 sm:h-20 flex items-center justify-end">
+                        <span class="font-display font-extrabold text-lg sm:text-2xl text-stone-900 tracking-wider bg-stone-100 px-3 py-1 rounded-xl border border-stone-300">单词：</span>
+                      </div>
+                      <div class="py-2.5 h-11 flex items-center justify-center"></div>
+                      <div class="h-16 sm:h-20 flex items-center justify-end">
+                        <span class="font-display font-extrabold text-lg sm:text-2xl text-sky-900 tracking-wider bg-sky-100 px-3 py-1 rounded-xl border border-sky-300">音标：</span>
+                      </div>
+                    </div>
+
+                    <!-- Right Columns: Parallel branches for each letter + sound combination -->
+                    <div class="flex items-center space-x-3 sm:space-x-6">
+                      ${columnsHtml}
+                    </div>
+
+                  </div>
+
+                  <!-- Bottom interactive tip & collapse button -->
+                  <div class="mt-4 pt-3 border-t border-stone-200/70 w-full flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-stone-500">
+                    <div class="flex items-center space-x-2">
+                      <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+                      <span>点击上方任意一列的【单词块】或【音标块】，将自动联动高光并播放该音素发音！</span>
+                    </div>
+                    <button onclick="event.stopPropagation(); toggleWordExpand('${wordObj.id}')" 
+                            class="px-3 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold flex items-center space-x-1 transition shrink-0">
+                      <i data-lucide="chevron-up" class="w-3.5 h-3.5"></i>
+                      <span>收起图解</span>
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            ` : (isExpanded ? `
+              <div class="p-5 sm:p-7 bg-white border-t border-stone-100">
+                <div class="rounded-2xl border border-dashed border-stone-300 p-6 text-center text-xs text-stone-400">
+                  <i data-lucide="info" class="w-4 h-4 mx-auto mb-1.5"></i>
+                  这个词条还没有自然拼读拆解内容。后续在后台给它补上 <code>breakdowns</code> 字段，图解会自动出现。
+                </div>
+              </div>` : '')}
+
+          </div>
+        `;
+      }).join("") + moreHtml;
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // Trigger column animation and pronunciation
+    function triggerBreakdownColumn(word, colIndex, soundIpa, letter) {
+      // 1. Highlight the column
+      const col = document.getElementById(`col-${word}-${colIndex}`);
+      if (col) {
+        col.classList.add("active-col");
+      }
+
+      // 2. Highlight top word underline segment
+      const topSeg = document.getElementById(`top-seg-${word}-${colIndex}`);
+      if (topSeg) {
+        const bar = topSeg.querySelector(".underline-bar");
+        if (bar) {
+          bar.classList.remove("bg-stone-900");
+          bar.classList.add("bg-amber-500", "h-2");
+        }
+      }
+
+      // 3. 切块不再点击发音（只保留高亮联动）
+
+      // 4. Remove active styles after a short delay
+      setTimeout(() => {
+        if (col) col.classList.remove("active-col");
+        if (topSeg) {
+          const bar = topSeg.querySelector(".underline-bar");
+          if (bar) {
+            bar.classList.add("bg-stone-900");
+            bar.classList.remove("bg-amber-500", "h-2");
+          }
+        }
+      }, 1300);
+    }
+
+    function filterWords() {
+      wordsShown = WORDS_PAGE_SIZE;   // 换主题 / 改搜索词时回到第一页
+      renderWordsCards();
+    }
+
+    /** 「加载更多」 */
+    function showMoreWords() {
+      wordsShown += WORDS_PAGE_SIZE;
+      renderWordsCards();
+    }
+
+    // Module 3: Lessons & Words Dual-Box View (Matching Image 2 Layout)
+    function loadLesson(lessonId) {
+      currentLessonId = lessonId;
+      const lesson = LESSONS_DATA[lessonId];
+      if (!lesson) return;
+
+      // Update Switch Buttons
+      document.querySelectorAll(".lesson-switch-btn").forEach(btn => {
+        btn.classList.remove("active", "bg-emerald-600", "text-white", "shadow-xs");
+        btn.classList.add("bg-stone-100", "text-stone-600");
+      });
+      const activeBtn = document.getElementById(`btn-${lessonId}`);
+      if (activeBtn) {
+        activeBtn.classList.add("active", "bg-emerald-600", "text-white", "shadow-xs");
+        activeBtn.classList.remove("bg-stone-100", "text-stone-600");
+        if (typeof scrollActiveLessonIntoView === "function") scrollActiveLessonIntoView(lessonId);
+      }
+
+      // Update Titles
+      const titleElem = document.getElementById("lesson-view-title");
+      const subTitleElem = document.getElementById("lesson-view-subtitle");
+      if (titleElem) titleElem.textContent = lesson.title;
+      if (subTitleElem) subTitleElem.textContent = lesson.subTitle;
+
+      // Render Left Box: 课文区域 (Text Sentences)
+      renderLessonSentences(lesson);
+
+      // Render Right Box: 单词区域 (Lesson Target Words)
+      renderLessonWords(lesson);
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    /* ================= 例句拆解（点击例句向下展开） ================= */
+    // 同一时刻只展开一句
+    let expandedSentenceId = null;
+
+    // 生成安全的 DOM id：只保留字母数字
+    function wordCardId(word) {
+      return String(word).toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+
+    function escapeAttr(text) {
+      return String(text).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    }
+
+    function renderLessonSentences(lesson) {
+      const container = document.getElementById("lesson-sentences-container");
+      if (!container) return;
+      expandedSentenceId = null;
+
+      // 切课/重绘时，右侧单词栏回到「本课核心生词」状态
+      const hintEl = document.getElementById("lesson-words-hint");
+      if (hintEl) hintEl.textContent = "本课例句里收录到的单词，点卡片可去单词页看词条：";
+      const backEl = document.getElementById("sentence-words-back");
+      if (backEl) { backEl.classList.add("hidden"); backEl.classList.remove("flex"); }
+
+      container.innerHTML = lesson.sentences.map((sentence, idx) => {
+        // 句子里「已收录的单词」标成可点：点一下跳到单词页对应词条
+        let formattedEn = sentence.en;
+        const linkedWords = wordsOfSentence(sentence);
+        const marks = linkedWords.length
+          ? linkedWords.map((w) => ({ key: w.word, id: w.id }))
+          : (sentence.highlightWords || []).map((k) => ({ key: k, id: "" }));
+        const ownerId = SENTENCE_OWNER[String(sentence.id)] || "";
+        marks.forEach((m) => {
+          const regex = new RegExp('\\b(' + m.key + ')\\b', 'gi');
+          const action = m.id ? ("jumpToWord('" + m.id + "')") : ("focusRightSideWord('" + m.key + "')");
+          // 这条例句就是配给这个词的 → 标成淡蓝色，与其它收录词区分开
+          const isOwner = !!m.id && String(m.id) === ownerId;
+          const cls = isOwner
+            ? 'bg-sky-100 text-sky-900 border-sky-400 hover:bg-sky-200'
+            : 'bg-amber-100 text-amber-900 border-amber-400 hover:bg-amber-200';
+          const tip = isOwner ? '这条例句配的就是这个词，点击回退到该词条' : '点击查看词条';
+          formattedEn = formattedEn.replace(
+            regex,
+            '<span class="' + cls + ' px-1 py-0.5 rounded font-semibold border-b-2 cursor-pointer transition" ' +
+            'title="' + tip + '" onclick="event.stopPropagation(); ' + action + '">' + '$1</span>'
+          );
+        });
+
+        const hasBreakdown = !!sentence.breakdown;
+        const sentenceText = sentence.en.replace(/'/g, "\\'");
+        const sentenceAudio = (sentence.audioUrl || '').replace(/'/g, "\\'");
+
+        return `
+          <div id="sentence-card-${sentence.id}" class="sentence-item rounded-xl border border-stone-200/70 transition-all overflow-hidden">
+            <div class="sentence-head p-4 flex items-start space-x-3.5 group cursor-pointer hover:bg-emerald-50/30"
+                 onclick="toggleSentenceBreakdown('${sentence.id}')">
+
+              <button onclick="event.stopPropagation(); playSentenceAudio('${sentence.id}')" class="mt-0.5 w-8 h-8 rounded-lg bg-stone-100 group-hover:bg-emerald-600 group-hover:text-white text-stone-500 flex items-center justify-center shrink-0 transition">
+                <i data-lucide="volume-2" class="w-4 h-4"></i>
+              </button>
+
+              <div class="flex-1">
+                <p class="text-base sm:text-lg text-stone-900 leading-relaxed font-medium">
+                  ${formattedEn}
+                </p>
+                <p class="trans-text text-sm text-stone-500 mt-1.5 leading-normal ${showTranslations ? '' : 'hidden'}">
+                  ${sentence.cn}
+                </p>
+              </div>
+
+              <div class="flex flex-col items-end gap-1 shrink-0">
+                <div class="text-[11px] font-mono text-stone-300 group-hover:text-stone-400">0${idx + 1}</div>
+                <div class="flex items-center gap-1 text-[11px] font-semibold ${hasBreakdown ? 'text-emerald-700' : 'text-stone-400'}">
+                  <span>${hasBreakdown ? '点击拆解' : '暂无拆解'}</span>
+                  <i data-lucide="chevron-down" class="sentence-chevron w-3.5 h-3.5 transition-transform duration-200"></i>
+                </div>
+              </div>
+            </div>
+
+            <div id="sentence-breakdown-${sentence.id}" class="hidden border-t border-stone-200 bg-stone-50/70"></div>
+          </div>
+        `;
+      }).join("");
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function toggleSentenceBreakdown(sentenceId) {
+      const lesson = LESSONS_DATA[currentLessonId];
+      if (!lesson) return;
+      const sentence = lesson.sentences.find(s => s.id === sentenceId);
+      if (!sentence) return;
+
+      const alreadyOpen = expandedSentenceId === sentenceId;
+
+      // 先收起上一条（单开模式）
+      if (expandedSentenceId && !alreadyOpen) collapseSentenceBreakdown(expandedSentenceId);
+
+      if (alreadyOpen) {
+        collapseSentenceBreakdown(sentenceId);
+        resetLessonWordsPanel(lesson);   // 右侧回到本课核心生词（含提示语/按钮复位）
+        return;
+      }
+
+      const panel = document.getElementById(`sentence-breakdown-${sentenceId}`);
+      if (panel) {
+        // 只在第一次展开时构建 DOM：之后重复展开不重建，配图不会被反复下载
+        if (panel.dataset.built !== "1") {
+          panel.innerHTML = buildBreakdownHtml(sentence);
+          panel.dataset.built = "1";
+        }
+        panel.classList.remove("hidden");
+      }
+      const card = document.getElementById(`sentence-card-${sentenceId}`);
+      if (card) {
+        card.classList.add("border-emerald-300", "shadow-sm");
+        const chevron = card.querySelector(".sentence-chevron");
+        if (chevron) chevron.classList.add("rotate-180");
+      }
+
+      expandedSentenceId = sentenceId;
+      renderSentenceWords(sentence);
+      if (window.lucide) lucide.createIcons();
+      if (card) card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function collapseSentenceBreakdown(sentenceId) {
+      const panel = document.getElementById(`sentence-breakdown-${sentenceId}`);
+      if (panel) {
+        // 只隐藏、不销毁：<img> 留在 DOM 里，重复展开不会再发一次网络请求
+        panel.classList.add("hidden");
+      }
+      const card = document.getElementById(`sentence-card-${sentenceId}`);
+      if (card) {
+        card.classList.remove("border-emerald-300", "shadow-sm");
+        const chevron = card.querySelector(".sentence-chevron");
+        if (chevron) chevron.classList.remove("rotate-180");
+      }
+      if (expandedSentenceId === sentenceId) expandedSentenceId = null;
+    }
+
+    /* 断句配色：用低饱和的柔和色区分意群，避免高饱和色块刺眼。
+       每块「上英文 / 下中文」同色系（英文稍深、中文更浅），保证一一对应。 */
+    const CHUNK_PALETTE = [
+      { en: "bg-sky-100 text-sky-900 border-sky-300", cn: "bg-sky-50 text-sky-700" },
+      { en: "bg-amber-100 text-amber-900 border-amber-300", cn: "bg-amber-50 text-amber-700" },
+      { en: "bg-violet-100 text-violet-900 border-violet-300", cn: "bg-violet-50 text-violet-700" },
+      { en: "bg-teal-100 text-teal-900 border-teal-300", cn: "bg-teal-50 text-teal-700" },
+      { en: "bg-rose-100 text-rose-900 border-rose-300", cn: "bg-rose-50 text-rose-700" },
+      { en: "bg-emerald-100 text-emerald-900 border-emerald-300", cn: "bg-emerald-50 text-emerald-700" }
+    ];
+
+    /** 断句：把句子按意群渲染成「上英文 / 下中文」的对照色块 */
+    function buildChunksHtml(b) {
+      let chunks = Array.isArray(b.chunks) ? b.chunks.filter((c) => c && c.en) : null;
+
+      // 兜底：后台没录 chunks 时，按 "/" 切分 chunking（只有英文）
+      if (!chunks || !chunks.length) {
+        chunks = String(b.chunking || "")
+          .split("/")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map((en) => ({ en, cn: "" }));
+      }
+
+      if (!chunks.length) {
+        return '<p class="font-mono text-sm text-stone-800">' + (b.chunking || '') + '</p>';
+      }
+
+      return (
+        '<div class="flex flex-wrap gap-2">' +
+        chunks
+          .map((c, i) => {
+            const p = CHUNK_PALETTE[i % CHUNK_PALETTE.length];
+            return (
+              '<div class="flex flex-col min-w-0 rounded-xl overflow-hidden border border-stone-200/70 shadow-xs">' +
+              '<span class="px-3 py-1.5 text-sm font-medium border-b-2 ' + p.en + '">' + c.en + '</span>' +
+              (c.cn ? '<span class="px-3 py-1 text-xs ' + p.cn + '">' + c.cn + '</span>' : '') +
+              '</div>'
+            );
+          })
+          .join('') +
+        '</div>'
+      );
+    }
+
+    /** 拆解面板：上半部分配图（紧跟例句），下半部分断句/连读/弱读解析 */
+    function buildBreakdownHtml(sentence) {
+      const b = sentence.breakdown;
+
+      // 配图先算出来：即使没有拆解内容，配图也要展示
+      const img = sentence.image;
+      const ratio = img && img.width && img.height ? `${img.width} / ${img.height}` : '16 / 9';
+      const imageHtml = img && img.url
+        ? `<figure class="rounded-xl overflow-hidden border border-stone-200 bg-white">
+             <img src="${img.url}" alt="${escapeAttr(img.caption || '例句配图')}" loading="lazy" decoding="async"
+                  ${img.width ? `width="${img.width}"` : ''} ${img.height ? `height="${img.height}"` : ''}
+                  class="w-full h-auto block" style="aspect-ratio: ${ratio}; object-fit: cover; background:#F5F5F4;" />
+             ${img.caption ? `<figcaption class="px-3 py-2 text-[11px] text-stone-500 border-t border-stone-100">${img.caption}</figcaption>` : ''}
+           </figure>`
+        : `<div class="rounded-xl border border-dashed border-stone-300 bg-white/70 px-4 py-8 text-center text-xs text-stone-400">
+             <i data-lucide="image-off" class="w-5 h-5 mx-auto mb-1"></i>本句配图待补充
+           </div>`;
+
+      if (!b) {
+        // 拆解还没做：有图就只显示图，没图就给一句紧凑说明（不要每句都顶一个大占位框）
+        const hasImage = !!(img && img.url);
+        return `<div class="p-5 space-y-4">
+          ${hasImage ? `<div>
+            <div class="flex items-center gap-1.5 text-[11px] font-bold text-stone-500 mb-2 uppercase tracking-wide">
+              <i data-lucide="image" class="w-3.5 h-3.5"></i><span>配图</span>
+            </div>
+            ${imageHtml}
+          </div>` : ''}
+          <div class="${hasImage ? 'pt-3 border-t border-stone-200 ' : ''}text-xs text-stone-400 leading-relaxed">
+            <i data-lucide="info" class="w-3.5 h-3.5 inline -mt-0.5"></i>
+            这条例句的<b class="text-stone-500">拆解</b>${hasImage ? '' : '和<b class="text-stone-500">配图</b>'}还没做。后续在后台给它补上 breakdown / image 字段，这里会自动显示断句 · 连读 · 弱读${hasImage ? '' : '与配图'}。
+          </div>
+        </div>`;
+      }
+
+      const chunksHtml = buildChunksHtml(b);
+
+      const linkingHtml = (b.linking || []).map(item => `
+        <li class="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
+          <span class="font-semibold text-stone-800 shrink-0">${item.text}</span>
+          <span class="font-mono text-sky-700 shrink-0">→ ${item.ipa}</span>
+          <span class="text-stone-500">${item.note || ''}</span>
+        </li>`).join("");
+
+      const reductionHtml = (b.reduction || []).map(item => `
+        <li class="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
+          <span class="font-semibold text-stone-800 shrink-0">${item.text}</span>
+          <span class="shrink-0">
+            <span class="font-mono text-stone-400 line-through">${item.strong || ''}</span>
+            <span class="font-mono font-bold text-rose-700 ml-1">${item.weak || ''}</span>
+          </span>
+          <span class="text-stone-500">${item.note || '句中弱读'}</span>
+        </li>`).join("");
+
+      return `
+        <div class="p-5 space-y-5">
+          <!-- ① 配图：紧跟在例句下方、拆解上方 -->
+          <div>
+            <div class="flex items-center gap-1.5 text-[11px] font-bold text-stone-500 mb-2 uppercase tracking-wide">
+              <i data-lucide="image" class="w-3.5 h-3.5"></i><span>配图</span>
+            </div>
+            ${imageHtml}
+          </div>
+
+          <!-- ② 拆解解析 -->
+          <div class="pt-4 border-t border-stone-200 space-y-4">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-600 text-white">例句拆解</span>
+              <span class="text-[11px] text-stone-500">断句 · 连读 · 弱读</span>
+            </div>
+
+            <section>
+              <h4 class="text-sm font-bold text-stone-900 mb-2">1. 断句<span class="font-normal text-stone-400 ml-1">（每块一个意群，块内不停顿）</span></h4>
+              ${chunksHtml}
+              ${b.chunkingNote ? `<p class="text-xs text-stone-500 mt-2.5">${b.chunkingNote}</p>` : ''}
+            </section>
+
+            <section>
+              <h4 class="text-sm font-bold text-stone-900 mb-1.5">2. 连读</h4>
+              <ul class="space-y-1.5 text-xs leading-relaxed">${linkingHtml}</ul>
+            </section>
+
+            <section>
+              <h4 class="text-sm font-bold text-stone-900 mb-1.5">3. 弱读<span class="font-normal text-rose-500 ml-1">（最关键）</span></h4>
+              <ul class="space-y-1.5 text-xs leading-relaxed">${reductionHtml}</ul>
+              ${b.tip ? `<p class="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">${b.tip}</p>` : ''}
+            </section>
+          </div>
+        </div>`;
+    }
+
+    /** 右侧单词栏：切到「本句逐词」模式（零基础版，每个词都列出来） */
+    function renderSentenceWords(sentence) {
+      const container = document.getElementById("lesson-words-container");
+      const badge = document.getElementById("lesson-word-count-badge");
+      const hint = document.getElementById("lesson-words-hint");
+      const backBtn = document.getElementById("sentence-words-back");
+      if (!container) return;
+
+      // 优先用 wordIds（主题单词）；老数据退回句子内嵌的逐词表
+      const linked = wordsOfSentence(sentence);
+      const words = linked.length
+        ? linked.map((w) => ({ id: w.id, w: w.word, ipa: w.ipa, pos: w.pos, cn: w.cn || w.meaning, note: w.note, audioUrl: w.mp3Url, theme: w.theme }))
+        : (Array.isArray(sentence.words) ? sentence.words : []);
+      const lesson = LESSONS_DATA[currentLessonId];
+      const no = lesson ? lesson.sentences.findIndex(s => s.id === sentence.id) + 1 : 0;
+
+      if (badge) badge.textContent = `本句 ${words.length} 个单词`;
+      if (backBtn) backBtn.classList.remove("hidden"), backBtn.classList.add("flex");
+
+      // 这句的单词分别属于哪些主题：给一排主题按钮，点了直接去那个主题的单词页
+      const themeIds = [];
+      words.forEach((it) => {
+        const tid = it.theme || "";
+        if (tid && themeIds.indexOf(tid) < 0) themeIds.push(tid);
+      });
+      if (hint) {
+        const chips = themeIds.length
+          ? themeIds.map((tid) => '<button onclick="jumpToTheme(\'' + tid + '\')" class="mr-1.5 mt-1 inline-flex items-center px-2 py-0.5 rounded-md font-semibold ' + themeChipClass(tid) + ' hover:opacity-75 transition">' + themeName(tid) + '</button>').join("")
+          : '（这句还没有关联主题）';
+        hint.innerHTML = '正在看「例句 ' + no + '」的逐词对照。<br>点卡片看词条，或按主题浏览：' + chips;
+      }
+      const backLabel = backBtn ? backBtn.querySelector("span") : null;
+      if (backLabel) backLabel.textContent = themeIds.length ? ('去看「' + themeName(themeIds[0]) + '」主题单词') : '去看主题单词';
+
+      if (!words.length) {
+        container.innerHTML = `<div class="bg-white rounded-2xl p-6 text-center border border-dashed border-stone-300">
+          <i data-lucide="book-x" class="w-7 h-7 text-stone-400 mx-auto mb-2"></i>
+          <p class="text-sm text-stone-500">这条例句还没有关联单词</p></div>`;
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = words.map((item, i) => `
+          <div id="lesson-word-card-${item.id || wordCardId(item.w)}"
+               class="p-3 rounded-2xl border-2 border-stone-200 bg-stone-50/80 hover:bg-amber-50/60 hover:border-amber-400 transition-all group"
+               ${item.id ? `onclick="jumpToWord('${item.id}')" title="去单词页看这个词条"` : ''}>
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-5 h-5 shrink-0 rounded-full bg-stone-200 group-hover:bg-amber-400 text-[10px] font-bold text-stone-600 group-hover:text-white flex items-center justify-center">${i + 1}</span>
+                <span class="font-display font-bold text-base text-stone-900 group-hover:text-amber-800 transition truncate">${item.w}</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button onclick="event.stopPropagation(); playWordAudio('${escapeAttr(item.id || item.w)}')" title="朗读"
+                        class="w-7 h-7 rounded-lg bg-white border border-stone-200 group-hover:bg-amber-500 group-hover:text-white text-stone-500 flex items-center justify-center transition">
+                  <i data-lucide="volume-1" class="w-3.5 h-3.5"></i>
+                </button>
+                ${item.id ? `<button onclick="event.stopPropagation(); jumpToWord('${item.id}')" title="去单词页看词条" class="w-7 h-7 rounded-lg bg-white border border-stone-200 hover:bg-emerald-500 hover:text-white text-stone-500 flex items-center justify-center transition"><i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i></button>` : ''}
+              </div>
+            </div>
+
+            <div class="mt-1.5 flex items-center gap-2 flex-wrap">
+              <span class="font-serif text-xs text-sky-700 font-semibold bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">${item.ipa || ''}</span>
+              ${item.pos ? `<span class="text-[11px] font-bold text-stone-500">${item.pos}</span>` : ''}
+            </div>
+
+            <div class="text-xs text-stone-600 mt-1">${item.cn || ''}</div>
+            ${item.note ? `<div class="text-[11px] text-rose-600 mt-1 leading-relaxed">※ ${item.note}</div>` : ''}
+          </div>`).join("");
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    /** 右侧单词栏复位：提示语 + 隐藏返回按钮 + 渲染本课核心生词 */
+    function resetLessonWordsPanel(lesson) {
+      const hint = document.getElementById("lesson-words-hint");
+      if (hint) hint.textContent = "本课例句里收录到的单词，点卡片可去单词页看词条：";
+      const backBtn = document.getElementById("sentence-words-back");
+      if (backBtn) { backBtn.classList.add("hidden"); backBtn.classList.remove("flex"); }
+      renderLessonWords(lesson);
+    }
+
+    /** 从「本句逐词」切回「本课核心生词」 */
+    function restoreLessonWords() {
+      const lesson = LESSONS_DATA[currentLessonId];
+      if (!lesson) return;
+      if (expandedSentenceId) collapseSentenceBreakdown(expandedSentenceId);
+      resetLessonWordsPanel(lesson);
+    }
+
+    /** 右侧单词栏的一张卡：发音 + 跳到单词页词条 */
+    function buildSideWordCard(w) {
+      const hasPhonics = Array.isArray(w.breakdowns) && w.breakdowns.length > 0;
+      const lettersRow = hasPhonics ? w.breakdowns.map((b) => b.letter).join(" ") : "";
+      const soundsRow = hasPhonics ? w.breakdowns.map((b) => b.soundDisplay).join(" ") : "";
+      const speech = escapeAttr(w.word);
+      return `
+        <div id="lesson-word-card-${w.id}" class="p-3.5 rounded-2xl border-2 border-stone-200 bg-stone-50/80 hover:border-amber-400 transition-all group">
+
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="font-display font-bold text-lg text-stone-900 group-hover:text-amber-800 transition truncate">${w.word}</span>
+              <span class="font-serif text-xs text-sky-700 font-semibold bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">${w.ipa || ''}</span>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button onclick="event.stopPropagation(); playWordAudio('${escapeAttr(w.id || w.word)}')" title="朗读"
+                      class="w-7 h-7 rounded-lg bg-white border border-stone-200 hover:bg-amber-500 hover:text-white text-stone-500 flex items-center justify-center transition">
+                <i data-lucide="volume-1" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="event.stopPropagation(); jumpToWord('${w.id}')" title="去单词页看这个词条"
+                      class="w-7 h-7 rounded-lg bg-white border border-stone-200 hover:bg-emerald-500 hover:text-white text-stone-500 flex items-center justify-center transition">
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-1.5 flex items-center gap-2 flex-wrap">
+            <span class="text-xs text-stone-600 font-bold">${w.pos || ''}</span>
+            <span class="text-[11px] px-1.5 py-0.5 rounded font-semibold ${themeChipClass(w.theme)}">${themeName(w.theme)}</span>
+          </div>
+
+          <div class="text-xs text-stone-600 mt-1">${w.meaning || w.cn || ''}</div>
+          ${w.note ? `<div class="text-[11px] text-rose-600 mt-1 leading-relaxed">※ ${w.note}</div>` : ''}
+
+          ${hasPhonics ? `
+          <div class="mt-2.5 pt-2 border-t border-stone-200 flex flex-col space-y-1 font-mono text-xs">
+            <div class="flex items-center justify-between bg-white px-2 py-1 rounded border border-amber-200">
+              <span class="text-stone-500 font-sans text-[11px] font-bold">单词:</span>
+              <span class="font-bold text-amber-900 tracking-wider">${lettersRow}</span>
+            </div>
+            <div class="flex items-center justify-between bg-white px-2 py-1 rounded border border-sky-200">
+              <span class="text-stone-500 font-sans text-[11px] font-bold">音标:</span>
+              <span class="font-bold text-sky-900 tracking-wider">${soundsRow}</span>
+            </div>
+          </div>` : ''}
+        </div>`;
+    }
+
+    /** 本课右侧单词栏：本课所有例句里收录到的单词（去重，按出现顺序） */
+    function renderLessonWords(lesson) {
+      const container = document.getElementById("lesson-words-container");
+      const badge = document.getElementById("lesson-word-count-badge");
+      if (!container) return;
+
+      const ids = [];
+      (lesson.sentences || []).forEach((s) => {
+        (s.wordIds || []).forEach((id) => { if (ids.indexOf(id) < 0) ids.push(id); });
+      });
+      const words = ids.map((id) => WORDS_BY_ID[id]).filter(Boolean);
+      if (badge) badge.textContent = words.length + " 个主题生词";
+
+      if (!words.length) {
+        container.innerHTML = `<div class="bg-white rounded-2xl p-6 text-center border border-dashed border-stone-300">
+          <i data-lucide="book-open" class="w-7 h-7 text-stone-400 mx-auto mb-2"></i>
+          <p class="text-sm text-stone-500">本课例句还没有关联单词</p></div>`;
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = words.map((w) => buildSideWordCard(w)).join("");
+      if (window.lucide) lucide.createIcons();
+    }
+
+    /* ================= 单词页 ↔ 课文页 双向跳转 ================= */
+
+    /** 从单词页跳到课文页，并展开高亮对应例句 */
+    function jumpToSentence(sentenceId) {
+      const hit = SENTENCE_INDEX[String(sentenceId)];
+      if (!hit) { showToast("没有找到这条例句"); return; }
+
+      switchTab("lessons");
+      currentLessonId = hit.lesson.id;
+      loadLesson(hit.lesson.id);
+      expandedSentenceId = null;
+
+      setTimeout(() => {
+        toggleSentenceBreakdown(hit.sentence.id);
+        const card = document.getElementById("sentence-card-" + hit.sentence.id);
+        if (card) {
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+          card.classList.add("ring-2", "ring-emerald-500", "bg-emerald-50");
+          setTimeout(() => card.classList.remove("ring-2", "ring-emerald-500", "bg-emerald-50"), 2200);
+        }
+        showToast("已定位到例句：" + hit.sentence.en);
+      }, 120);
+    }
+
+    /** 从课文页跳到单词页，并高亮对应词条（主题筛选跟着切到该词所属主题） */
+    function jumpToWord(wordId) {
+      const w = WORDS_BY_ID[wordId];
+      if (!w) { showToast("这个单词还没有收录"); return; }
+
+      switchTab("words");
+      const sel = document.getElementById("lesson-filter-select");
+      if (sel) sel.value = themeOf(w.theme) ? w.theme : "all";
+      const search = document.getElementById("word-search-input");
+      if (search) search.value = "";
+      renderWordsCards();
+
+      setTimeout(() => {
+        const card = document.getElementById("word-card-" + wordId);
+        if (card) {
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+          card.classList.add("ring-2", "ring-emerald-500");
+          setTimeout(() => card.classList.remove("ring-2", "ring-emerald-500"), 2200);
+        }
+        showToast("已定位到词条：" + w.word + "（" + themeName(w.theme) + "）");
+      }, 120);
+    }
+
+    /** 跳到单词页的某个主题 */
+    function jumpToTheme(themeId) {
+      if (!themeOf(themeId)) { showToast("没有这个主题"); return; }
+      switchTab("words");
+      const sel = document.getElementById("lesson-filter-select");
+      if (sel) sel.value = themeId;
+      const search = document.getElementById("word-search-input");
+      if (search) search.value = "";
+      renderWordsCards();
+
+      setTimeout(() => {
+        const box = document.getElementById("words-cards-container");
+        if (box) box.scrollIntoView({ behavior: "smooth", block: "start" });
+        const n = WORDS_DATA.filter((w) => w.theme === themeId).length;
+        showToast("已切到「" + themeName(themeId) + "」主题，共 " + n + " 个单词");
+      }, 120);
+    }
+
+    /** 当前展开例句的单词所属主题（取第一个），跳到那个主题的单词页 */
+    function jumpToThemeOfSentence() {
+      const lesson = LESSONS_DATA[currentLessonId];
+      const s = lesson && (lesson.sentences || []).find((x) => String(x.id) === String(expandedSentenceId));
+      const list = wordsOfSentence(s || {});
+      if (!list.length) { showToast("这条例句还没有关联单词"); return; }
+      const first = list.find((w) => themeOf(w.theme)) || list[0];
+      jumpToTheme(first.theme);
+    }
+
+    // Link clicking word to sentence focus
+    function handleWordClickInSidebar(wordId) {
+      playWordAudio(wordId);
+      
+      // Find sentence containing this word in current lesson
+      const lesson = LESSONS_DATA[currentLessonId];
+      if (!lesson) return;
+      const targetSentence = lesson.sentences.find(s => s.highlightWords.includes(wordId));
+      if (targetSentence) {
+        const sentenceCard = document.getElementById(`sentence-card-${targetSentence.id}`);
+        if (sentenceCard) {
+          sentenceCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          sentenceCard.classList.add("ring-2", "ring-emerald-500", "bg-emerald-50");
+          setTimeout(() => {
+            sentenceCard.classList.remove("ring-2", "ring-emerald-500", "bg-emerald-50");
+          }, 1800);
+        }
+      }
+    }
+
+    function focusRightSideWord(wordId) {
+      const card = document.getElementById(`lesson-word-card-${wordId.toLowerCase()}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        card.classList.add("ring-2", "ring-amber-500", "bg-amber-100");
+        playWordAudio(wordId);
+        setTimeout(() => {
+          card.classList.remove("ring-2", "ring-amber-500", "bg-amber-100");
+        }, 1500);
+      }
+    }
+
+    // Read full lesson sequentially
+    function playFullLesson() {
+      const lesson = LESSONS_DATA[currentLessonId];
+      if (!lesson || !lesson.sentences.length) return;
+
+      // 1) 有整篇真实音频 → 直接播
+      if (isPlayableMedia(lesson.audioUrl)) {
+        AudioEngine.playOrSpeak(lesson.audioUrl, "", speechRate);
+        return;
+      }
+
+      // 2) 否则逐句走：这句有真实音频就播音频，没有就合成发音
+      let index = 0;
+      function speakNext() {
+        if (index >= lesson.sentences.length) {
+          showToast("本篇课文朗读完毕");
+          return;
+        }
+        const s = lesson.sentences[index];
+        const card = document.getElementById("sentence-card-" + s.id);
+        if (card) card.classList.add("ring-2", "ring-emerald-400");
+
+        const hasReal = isPlayableMedia(s.audioUrl);
+        const hasSeg = hasReal && s.timestamp && typeof s.timestamp.start === "number";
+        let wait;
+        if (hasSeg) {
+          // 例句音频是「整部分一个文件 + 时间戳」，按片段播，等待时长跟着片段走
+          AudioEngine.playSegment(s.audioUrl, s.timestamp.start, s.timestamp.end, s.en);
+          wait = Math.max(1.2, (s.timestamp.end || 0) - (s.timestamp.start || 0)) * 1000 / AudioEngine.rate() + 450;
+        } else if (hasReal) {
+          AudioEngine.playOrSpeak(s.audioUrl, s.en, speechRate);
+          wait = 4500;
+        } else {
+          AudioEngine.speak(s.en);
+          wait = 3200;
+        }
+
+        index++;
+        setTimeout(function () {
+          if (card) card.classList.remove("ring-2", "ring-emerald-400");
+          speakNext();
+        }, wait);
+      }
+      speakNext();
+    }
+
+    // Initialize App on DOM load
+    window.addEventListener("DOMContentLoaded", () => {
+      // Speed Selector Binding
+      const speedSelect = document.getElementById("audio-speed-select");
+      if (speedSelect) {
+        speedSelect.addEventListener("change", (e) => {
+          speechRate = parseFloat(e.target.value) || 1.0;
+          // 真实音频：直接改正在播放的元素的倍速，立刻生效（不用重播）
+          if (typeof AudioEngine !== "undefined" && AudioEngine._audio) {
+            try {
+              AudioEngine._audio.playbackRate = speechRate;
+              AudioEngine._audio.preservesPitch = true;
+            } catch (err) {}
+          }
+          showToast(`倍速已切换为 ${speechRate}x`);
+        });
+      }
+
+      // 图标先渲染一次，让加载遮罩里的图标正常显示
+      if (window.lucide) lucide.createIcons();
+
+      // 关键变化：数据来自云函数，取到之后再渲染各个 Tab
+      DataService.boot();
+    });
+  </script>
+</body>
+</html>
