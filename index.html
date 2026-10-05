@@ -172,6 +172,7 @@
         margin: 0;
         max-height: 76vh;
         overflow-y: auto;
+        overscroll-behavior: contain;
         -webkit-overflow-scrolling: touch;
         border-radius: 1.5rem 1.5rem 0 0;
         border-width: 2px 0 0 0;
@@ -221,6 +222,39 @@
       #words-sheet-fab:active { transform: scale(0.96); }
       /* 移动端导航按钮等宽铺开 */
       #main-nav .nav-tab { flex: 1 1 0; justify-content: center; min-width: 0; }
+    }
+
+    /* ===== 例句跟读：淡黄色「歌词式」逐词高亮 ===== */
+    .sentence-item span[data-kw] {
+      scroll-margin: 90px 0;
+      transition: background-color 0.12s linear, color 0.12s linear, box-shadow 0.12s linear;
+    }
+    .sentence-item span[data-kw].karaoke-on {
+      background-color: #fde68a !important;
+      color: #78350f !important;
+      border-bottom-color: #f59e0b !important;
+      box-shadow: 0 0 0 2px #fcd34d inset;
+    }
+
+    /* ===== 课文页右侧「单词区域」（桌面宽屏）：高度跟着视口走，保证能滚到底 =====
+       原来容器写死 max-height:580px，而面板整体 = 表头 + 提示 + 容器 ≈ 730px；
+       视口矮一点（笔记本常见 ~700px）面板就超出屏幕，
+       容器又已经滚到自己尽头 → 最后几个单词永远够不到，只能拖最右侧细滚动条。
+       现在：面板整体不超出视口，容器在里面弹性伸缩、自带滚动条。 */
+    @media (min-width: 1024px) {
+      #lesson-words-panel {
+        max-height: calc(100vh - 7.5rem);
+        display: flex;
+        flex-direction: column;
+      }
+      #lesson-words-panel #lesson-words-container {
+        max-height: none;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-right: 0.25rem;
+      }
     }
   </style>
 </head>
@@ -481,7 +515,7 @@
             </div>
           </div>
 
-          <p id="lesson-words-hint" class="text-xs text-stone-500 mb-3">本课例句里收录到的单词，点卡片可去单词页看词条：</p>
+          <p id="lesson-words-hint" class="text-xs text-stone-500 mb-3">点击卡片播放录音，点 ↗ 去单词页看词条：</p>
 
           <button id="sentence-words-back" onclick="jumpToThemeOfSentence()" class="hidden mb-3 w-full py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold items-center justify-center space-x-1 transition">
             <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
@@ -549,7 +583,7 @@
        body: {"action":"getAll"}  ->  { code, data:{phonetics,words,lessons}, counts }
        ========================================================================== */
     const API_BASE = "https://cloud1-d0g9cnie47dd46cd5-1452417664.ap-shanghai.app.tcloudbase.com/eng-data";
-    const CACHE_KEY = "qihang-english:content:v17";
+    const CACHE_KEY = "qihang-english:content:v22";
     const CACHE_TTL = 30 * 60 * 1000; // 30 分钟内的本地缓存可直接用于首屏
 
     // 全局数据：由 DataService 填充，渲染函数保持原样不改
@@ -605,16 +639,60 @@
       AudioEngine.speak(w.word);
     }
 
+    /* ---------------- 例句跟读：淡黄色「歌词式」逐词高亮 ----------------
+       整段只有一个时间戳，没有逐词时间戳，所以按「词长」把时长分摊给每个词
+       （英语里词越长读得越久，这个近似够用）。 */
+    let _karaokeRaf = 0;
+    function stopKaraoke() {
+      if (_karaokeRaf) { cancelAnimationFrame(_karaokeRaf); _karaokeRaf = 0; }
+      const on = document.querySelectorAll(".karaoke-on");
+      for (let i = 0; i < on.length; i++) on[i].classList.remove("karaoke-on");
+    }
+    function startKaraoke(sentenceId, durationMs) {
+      stopKaraoke();
+      if (!(durationMs > 0)) return;
+      const card = document.getElementById("sentence-card-" + sentenceId);
+      if (!card) return;
+      const chips = Array.prototype.slice.call(card.querySelectorAll("span[data-kw]"));
+      if (!chips.length) return;
+      const weights = chips.map((c) => ((c.textContent || "").trim().length || 1) + 1);
+      const total = weights.reduce((a, b) => a + b, 0) || 1;
+      let acc = 0;
+      const bounds = weights.map((w) => { acc += w; return acc / total; });
+      const t0 = performance.now();
+      let last = -1;
+      const tick = () => {
+        const p = Math.min(1, (performance.now() - t0) / durationMs);
+        let idx = 0;
+        while (idx < bounds.length - 1 && p > bounds[idx]) idx++;
+        if (idx !== last) {
+          for (let i = 0; i < chips.length; i++) chips[i].classList.toggle("karaoke-on", i === idx);
+          last = idx;
+          // 边读边滚：只在当前词跑出可视区时才滚动，避免页面乱跳
+          try { chips[idx].scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) {}
+        }
+        if (p < 1) { _karaokeRaf = requestAnimationFrame(tick); }
+        else { stopKaraoke(); }
+      };
+      _karaokeRaf = requestAnimationFrame(tick);
+    }
+
     /** 例句发音：有「整部分音频 + 时间戳」就播片段，否则合成朗读 */
     function playSentenceAudio(sentenceId) {
       const hit = (typeof SENTENCE_INDEX !== "undefined" && SENTENCE_INDEX[String(sentenceId)]) || null;
       const s = hit ? hit.sentence : null;
       if (!s) { return; }
+      stopKaraoke();
       if (isPlayableMedia(s.audioUrl) && s.timestamp && typeof s.timestamp.start === "number") {
+        const rate = (typeof AudioEngine !== "undefined" && AudioEngine.rate) ? AudioEngine.rate() : 1;
+        const durMs = ((s.timestamp.end - s.timestamp.start) * 1000) / (rate || 1);
         AudioEngine.playSegment(s.audioUrl, s.timestamp.start, s.timestamp.end, s.en);
+        startKaraoke(sentenceId, durMs + 120);
         return;
       }
       AudioEngine.speak(s.en);
+      // 合成朗读没有精确时长，按字数估一个
+      startKaraoke(sentenceId, Math.max(1200, String(s.en).length * 95));
     }
 
     function findWordAudio(word) {
@@ -1781,7 +1859,7 @@
 
       // 切课/重绘时，右侧单词栏回到「本课核心生词」状态
       const hintEl = document.getElementById("lesson-words-hint");
-      if (hintEl) hintEl.textContent = "本课例句里收录到的单词，点卡片可去单词页看词条：";
+      if (hintEl) hintEl.textContent = "点击卡片播放录音，点 ↗ 去单词页看词条：";
       const backEl = document.getElementById("sentence-words-back");
       if (backEl) { backEl.classList.add("hidden"); backEl.classList.remove("flex"); }
 
@@ -1795,16 +1873,19 @@
         const ownerId = SENTENCE_OWNER[String(sentence.id)] || "";
         marks.forEach((m) => {
           const regex = new RegExp('\\b(' + m.key + ')\\b', 'gi');
-          const action = m.id ? ("jumpToWord('" + m.id + "')") : ("focusRightSideWord('" + m.key + "')");
+          // 点例句里的词不再跳去单词页，而是唤起「单词」底部弹窗并定位到这个词
+          const action = m.id
+            ? ("openWordsSheetAt('" + sentence.id + "', '" + m.id + "')")
+            : ("focusRightSideWord('" + m.key + "')");
           // 这条例句就是配给这个词的 → 标成淡蓝色，与其它收录词区分开
           const isOwner = !!m.id && String(m.id) === ownerId;
           const cls = isOwner
             ? 'bg-sky-100 text-sky-900 border-sky-400 hover:bg-sky-200'
             : 'bg-amber-100 text-amber-900 border-amber-400 hover:bg-amber-200';
-          const tip = isOwner ? '这条例句配的就是这个词，点击回退到该词条' : '点击查看词条';
+          const tip = isOwner ? '点击在下方单词区定位这个词' : '点击在下方单词区查看';
           formattedEn = formattedEn.replace(
             regex,
-            '<span class="' + cls + ' px-1 py-0.5 rounded font-semibold border-b-2 cursor-pointer transition" ' +
+            '<span data-kw="1" class="' + cls + ' px-1 py-0.5 rounded font-semibold border-b-2 cursor-pointer transition" ' +
             'title="' + tip + '" onclick="event.stopPropagation(); ' + action + '">' + '$1</span>'
           );
         });
@@ -2082,18 +2163,14 @@
 
       container.innerHTML = words.map((item, i) => `
           <div id="lesson-word-card-${item.id || wordCardId(item.w)}"
-               class="p-3 rounded-2xl border-2 border-stone-200 bg-stone-50/80 hover:bg-amber-50/60 hover:border-amber-400 transition-all group"
-               ${item.id ? `onclick="jumpToWord('${item.id}')" title="去单词页看这个词条"` : ''}>
+               class="p-3 rounded-2xl border-2 border-stone-200 bg-stone-50/80 hover:bg-amber-50/60 hover:border-amber-400 transition-all group cursor-pointer"
+               ${item.id ? `onclick="playWordAudio('${item.id}')" title="点击播放录音"` : ''}>
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2 min-w-0">
                 <span class="w-5 h-5 shrink-0 rounded-full bg-stone-200 group-hover:bg-amber-400 text-[10px] font-bold text-stone-600 group-hover:text-white flex items-center justify-center">${i + 1}</span>
                 <span class="font-display font-bold text-base text-stone-900 group-hover:text-amber-800 transition truncate">${item.w}</span>
               </div>
               <div class="flex items-center gap-1 shrink-0">
-                <button onclick="event.stopPropagation(); playWordAudio('${escapeAttr(item.id || item.w)}')" title="朗读"
-                        class="w-7 h-7 rounded-lg bg-white border border-stone-200 group-hover:bg-amber-500 group-hover:text-white text-stone-500 flex items-center justify-center transition">
-                  <i data-lucide="volume-1" class="w-3.5 h-3.5"></i>
-                </button>
                 ${item.id ? `<button onclick="event.stopPropagation(); jumpToWord('${item.id}')" title="去单词页看词条" class="w-7 h-7 rounded-lg bg-white border border-stone-200 hover:bg-emerald-500 hover:text-white text-stone-500 flex items-center justify-center transition"><i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i></button>` : ''}
               </div>
             </div>
@@ -2113,7 +2190,7 @@
     /** 右侧单词栏复位：提示语 + 隐藏返回按钮 + 渲染本课核心生词 */
     function resetLessonWordsPanel(lesson) {
       const hint = document.getElementById("lesson-words-hint");
-      if (hint) hint.textContent = "本课例句里收录到的单词，点卡片可去单词页看词条：";
+      if (hint) hint.textContent = "点击卡片播放录音，点 ↗ 去单词页看词条：";
       const backBtn = document.getElementById("sentence-words-back");
       if (backBtn) { backBtn.classList.add("hidden"); backBtn.classList.remove("flex"); }
       renderLessonWords(lesson);
@@ -2134,7 +2211,9 @@
       const soundsRow = hasPhonics ? w.breakdowns.map((b) => b.soundDisplay).join(" ") : "";
       const speech = escapeAttr(w.word);
       return `
-        <div id="lesson-word-card-${w.id}" class="p-3.5 rounded-2xl border-2 border-stone-200 bg-stone-50/80 hover:border-amber-400 transition-all group">
+        <div id="lesson-word-card-${w.id}" class="p-3.5 rounded-2xl border-2 border-stone-200 bg-stone-50/80 hover:border-amber-400 transition-all group cursor-pointer"
+             onclick="playWordAudio('${escapeAttr(w.id || w.word)}')"
+             title="点击播放录音">
 
           <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2 min-w-0">
@@ -2142,10 +2221,6 @@
               <span class="font-serif text-xs text-sky-700 font-semibold bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">${w.ipa || ''}</span>
             </div>
             <div class="flex items-center gap-1 shrink-0">
-              <button onclick="event.stopPropagation(); playWordAudio('${escapeAttr(w.id || w.word)}')" title="朗读"
-                      class="w-7 h-7 rounded-lg bg-white border border-stone-200 hover:bg-amber-500 hover:text-white text-stone-500 flex items-center justify-center transition">
-                <i data-lucide="volume-1" class="w-3.5 h-3.5"></i>
-              </button>
               <button onclick="event.stopPropagation(); jumpToWord('${w.id}')" title="去单词页看这个词条"
                       class="w-7 h-7 rounded-lg bg-white border border-stone-200 hover:bg-emerald-500 hover:text-white text-stone-500 flex items-center justify-center transition">
                 <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
@@ -2354,13 +2429,25 @@
     }
 
     /* ---- 移动端：单词区域底部半屏弹窗 ---- */
+    /* 彻底解锁滚动（任何路径都调到它，只增不减，不会残留） */
+    window.unlockPageScroll = function () {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.height = "";
+      document.body.style.touchAction = "";
+      document.documentElement.style.overflow = "";
+    };
+
     window.openWordsSheet = function () {
       const panel = document.getElementById("lesson-words-panel");
       const bd = document.getElementById("words-sheet-backdrop");
       if (!panel) return;
       panel.classList.add("sheet-open");
       if (bd) bd.classList.add("sheet-open");
-      document.body.style.overflow = "hidden";
+      // ⚠ 不再锁 body 的 overflow：
+      //   全屏遮罩本身就能挡住背景交互，锁 body 只会在异常路径下把课文页锁死（用户遇到的「卡死」）
+      window.unlockPageScroll();
+      if (typeof stopKaraoke === "function") stopKaraoke();   // 开弹窗时停掉例句跟读高亮
       if (window.lucide) lucide.createIcons();
     };
     window.closeWordsSheet = function () {
@@ -2368,9 +2455,113 @@
       const bd = document.getElementById("words-sheet-backdrop");
       if (panel) panel.classList.remove("sheet-open");
       if (bd) bd.classList.remove("sheet-open");
-      document.body.style.overflow = "";
+      window.unlockPageScroll();
+      if (typeof stopKaraoke === "function") stopKaraoke();
     };
     window.addEventListener("keydown", (e) => { if (e.key === "Escape") window.closeWordsSheet(); });
+
+    /* 自愈兜底：只要用户碰了页面而弹窗又没开着，就顺手把滚动锁清掉。
+       这样即使某条异常路径把页面锁住了，用户随便点一下/滑一下就能恢复，不用再切导航栏。 */
+    ["touchstart", "mousedown", "wheel", "scroll"].forEach((evt) => {
+      document.addEventListener(evt, () => {
+        const panel = document.getElementById("lesson-words-panel");
+        if (!panel || !panel.classList.contains("sheet-open")) {
+          if (document.body.style.overflow === "hidden" || document.documentElement.style.overflow === "hidden") {
+            window.unlockPageScroll();
+          }
+        }
+      }, { passive: true, capture: true });
+    });
+    // 兜底：页面切到后台再回来时，若弹窗没开着就确保是解锁状态
+    document.addEventListener("visibilitychange", () => {
+      const panel = document.getElementById("lesson-words-panel");
+      if (!panel || !panel.classList.contains("sheet-open")) {
+        window.unlockPageScroll();
+      }
+    });
+
+    /* 从例句里的单词点进来：唤起弹窗 + 渲染该句的词 + 滚到并高亮目标词 */
+    /* 只滚动「弹窗内部」的滚动容器，绝不带动课文页。
+       定位改成**闭环校正**：滚一次 → 量一次卡片相对容器的位置 → 没居中就再修，
+       最多修 8 次，误差 ≤ 6px 收工。
+       为什么闭环：弹窗有 transform 滑入动画、卡片又是刚渲染出来的，
+       开环算一次很难算准；而 getBoundingClientRect 做差值
+       （卡片rect.top - 容器rect.top）时两边被 transform 同量平移，差值不受动画影响，天然可靠。 */
+    window.sheetScroller = function (el) {
+      var panel = document.getElementById("lesson-words-panel");
+      var node = el && el.parentElement;
+      while (node && node !== document.body) {
+        var st = getComputedStyle(node);
+        if (/(auto|scroll)/.test(st.overflowY)) return node;
+        node = node.parentElement;
+      }
+      return panel;
+    };
+    window.scrollInsideSheet = function (el) {
+      if (!el) return;
+      var panel = document.getElementById("lesson-words-panel");
+      if (!panel) return;
+      var sc = window.sheetScroller(el) || panel;
+      var tries = 0;
+      var settle = function () {
+        var desired = (sc.clientHeight - el.offsetHeight) / 2;
+        var actual = el.getBoundingClientRect().top - sc.getBoundingClientRect().top;
+        var diff = actual - desired;
+        if (Math.abs(diff) > 6 && tries < 8) {
+          tries++;
+          var target = sc.scrollTop + diff;
+          var maxTop = sc.scrollHeight - sc.clientHeight;
+          if (target < 0) target = 0;
+          if (target > maxTop) target = maxTop;
+          sc.scrollTop = target;
+          requestAnimationFrame(settle);
+        }
+      };
+      void sc.offsetHeight;   // 先强制一次布局
+      settle();
+    };
+
+    window.openWordsSheetAt = function (sentenceId, wordId) {
+      try {
+        var lesson = (typeof LESSONS_DATA !== "undefined" && LESSONS_DATA) ? LESSONS_DATA[currentLessonId] : null;
+        var sentence = lesson && (lesson.sentences || []).filter(function (s) { return String(s.id) === String(sentenceId); })[0];
+        if (sentence && typeof renderSentenceWords === "function") renderSentenceWords(sentence);
+      } catch (err) {}
+      window.openWordsSheet();
+      var focus = function () {
+        var card = document.getElementById("lesson-word-card-" + wordId);
+        if (!card) return;
+        window.scrollInsideSheet(card);   // 只滚弹窗内部，不动课文页（内部闭环校正到居中）
+        card.classList.add("ring-2", "ring-sky-400", "border-sky-400");
+        setTimeout(function () {
+          card.classList.remove("ring-2", "ring-sky-400", "border-sky-400");
+        }, 2600);
+      };
+      // 三次：60ms 抢一次布局、300ms 等滑入动画过半、720ms 动画结束后再精修一次
+      setTimeout(focus, 60);
+      setTimeout(focus, 300);
+      setTimeout(focus, 720);
+    };
+
+    /* 让「单词区域」容器高度跟着视口走，保证最后一张卡也能滚到。
+       为什么要 JS 兜底：容器原来的 max-h-[580px] 是 Tailwind 任意值类，
+       视口矮的时候面板整体超出屏幕，容器再滚也够不到底部。 */
+    window.fitWordsPanel = function () {
+      var panel = document.getElementById("lesson-words-panel");
+      var cont = document.getElementById("lesson-words-container");
+      if (!panel || !cont) return;
+      if (window.innerWidth < 1024) { cont.style.maxHeight = ""; return; }  // 窄屏是底部弹窗，交给 CSS
+      var panelRect = panel.getBoundingClientRect();
+      if (!panelRect.height) return;
+      // 面板顶：正常取实测；页面滚到一半 / 布局还没定时退回 sticky 的固定偏移（top-24 = 96px）
+      var top = panelRect.top;
+      if (top < 0 || top > window.innerHeight - 260) top = 96;
+      var used = cont.getBoundingClientRect().top - panelRect.top;   // 表头 + 提示占掉的高度
+      if (!(used > 0)) used = 160;
+      var avail = window.innerHeight - top - 20;                     // 面板可用总高
+      var h = Math.max(160, Math.floor(avail - used));
+      cont.style.maxHeight = h + "px";
+    };
 
     // Initialize App on DOM load
     window.addEventListener("DOMContentLoaded", () => {
@@ -2378,6 +2569,14 @@
       document.querySelectorAll(".nav-tab").forEach((b) => {
         b.addEventListener("click", () => window.closeWordsSheet());
       });
+
+      // 单词栏内容一变 / 窗口尺寸一变，就重新适配容器高度（保证能滚到底）
+      const wordsCont = document.getElementById("lesson-words-container");
+      if (wordsCont && typeof MutationObserver !== "undefined") {
+        new MutationObserver(() => window.fitWordsPanel()).observe(wordsCont, { childList: true });
+        window.addEventListener("resize", () => window.fitWordsPanel());
+        window.fitWordsPanel();
+      }
 
       // Speed Selector Binding
       const speedSelect = document.getElementById("audio-speed-select");
