@@ -224,17 +224,32 @@
       #main-nav .nav-tab { flex: 1 1 0; justify-content: center; min-width: 0; }
     }
 
-    /* ===== 例句跟读：淡黄色「歌词式」逐词高亮 ===== */
+    /* ===== 例句跟读：歌词式 —— 整句每个词都参与，当前词亮、其余压暗 ===== */
     .sentence-item span[data-kw] {
       scroll-margin: 90px 0;
-      transition: background-color 0.12s linear, color 0.12s linear, box-shadow 0.12s linear;
+      transition: opacity 0.18s linear, background-color 0.18s linear,
+                  color 0.18s linear, box-shadow 0.18s linear;
     }
-    .sentence-item span[data-kw].karaoke-on {
+    /* 跟读进行中：没读到的词整体压暗（像歌词里还没唱到的那几行） */
+    .sentence-en.karaoke-run span[data-kw] {
+      opacity: 0.34;
+      background-color: transparent !important;
+      color: #78716c !important;
+      box-shadow: none !important;
+      border-bottom-color: transparent !important;
+    }
+    /* 当前正在读的那个词：提亮 + 淡黄高亮 */
+    .sentence-en.karaoke-run span[data-kw].karaoke-on {
+      opacity: 1;
       background-color: #fde68a !important;
       color: #78350f !important;
       border-bottom-color: #f59e0b !important;
       box-shadow: 0 0 0 2px #fcd34d inset;
+      border-radius: 4px;
     }
+
+    /* 双语关闭时隐藏翻译：自带规则，不依赖 Tailwind 的 .hidden 是否加载成功 */
+    .trans-text.hidden { display: none !important; }
 
     /* ===== 课文页右侧「单词区域」（桌面宽屏）：高度跟着视口走，保证能滚到底 =====
        原来容器写死 max-height:580px，而面板整体 = 表头 + 提示 + 容器 ≈ 730px；
@@ -583,7 +598,7 @@
        body: {"action":"getAll"}  ->  { code, data:{phonetics,words,lessons}, counts }
        ========================================================================== */
     const API_BASE = "https://cloud1-d0g9cnie47dd46cd5-1452417664.ap-shanghai.app.tcloudbase.com/eng-data";
-    const CACHE_KEY = "qihang-english:content:v22";
+    const CACHE_KEY = "qihang-english:content:v23";
     const CACHE_TTL = 30 * 60 * 1000; // 30 分钟内的本地缓存可直接用于首屏
 
     // 全局数据：由 DataService 填充，渲染函数保持原样不改
@@ -647,15 +662,42 @@
       if (_karaokeRaf) { cancelAnimationFrame(_karaokeRaf); _karaokeRaf = 0; }
       const on = document.querySelectorAll(".karaoke-on");
       for (let i = 0; i < on.length; i++) on[i].classList.remove("karaoke-on");
+      const run = document.querySelectorAll(".karaoke-run");
+      for (let i = 0; i < run.length; i++) run[i].classList.remove("karaoke-run");
     }
+
+    /** 粗略数音节：元音字母组数；词尾不发音的 e 扣掉一个 */
+    function estSyllables(w) {
+      const s = String(w || "").toLowerCase().replace(/[^a-z]/g, "");
+      if (!s) return 1;
+      const g = s.match(/[aeiouy]+/g);
+      let n = g ? g.length : 1;
+      if (n > 1 && /[^aeiouy]e$/.test(s)) n -= 1;
+      return Math.max(1, n);
+    }
+
     function startKaraoke(sentenceId, durationMs) {
       stopKaraoke();
       if (!(durationMs > 0)) return;
       const card = document.getElementById("sentence-card-" + sentenceId);
       if (!card) return;
-      const chips = Array.prototype.slice.call(card.querySelectorAll("span[data-kw]"));
+      const box = card.querySelector(".sentence-en") || card;
+      // 整句每个词都参与（.w 普通词 + 收录词 chip）
+      const chips = Array.prototype.slice.call(box.querySelectorAll("span[data-kw]"));
       if (!chips.length) return;
-      const weights = chips.map((c) => ((c.textContent || "").trim().length || 1) + 1);
+      box.classList.add("karaoke-run");
+
+      /* 时长分摊模型（比按字数准得多）：
+         每词 ≈ 音节数 × 1 个单位 + 0.35 个单位词间停顿；
+         后面跟逗号/分号再加 0.9，跟句号再加 1.3 —— 朗读在标点处确实会停。*/
+      const weights = chips.map((c) => {
+        const t = (c.textContent || "").trim();
+        let w = estSyllables(t) + 0.35;
+        const nx = c.nextSibling ? String(c.nextSibling.textContent || "") : "";
+        if (/^s*[,;:]/.test(nx)) w += 0.9;
+        else if (/^s*./.test(nx)) w += 1.3;
+        return w;
+      });
       const total = weights.reduce((a, b) => a + b, 0) || 1;
       let acc = 0;
       const bounds = weights.map((w) => { acc += w; return acc / total; });
@@ -1667,7 +1709,7 @@
                   </div>
                   <div class="text-xs sm:text-sm font-medium text-stone-600 mt-1.5 leading-relaxed">
                     <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                      <span>释义：<strong class="text-stone-900">${wordObj.meaning}</strong></span>
+                      <span class="trans-text ${showTranslations ? '' : 'hidden'}">释义：<strong class="text-stone-900">${wordObj.meaning}</strong></span>
                       <span class="text-stone-300 hidden sm:inline">|</span>
                       <span class="text-[11px] px-2 py-0.5 rounded-md font-semibold ${themeChipClass(wordObj.theme)}">${themeName(wordObj.theme)}</span>
                     </div>
@@ -1864,15 +1906,35 @@
       if (backEl) { backEl.classList.add("hidden"); backEl.classList.remove("flex"); }
 
       container.innerHTML = lesson.sentences.map((sentence, idx) => {
-        // 句子里「已收录的单词」标成可点：点一下跳到单词页对应词条
-        let formattedEn = sentence.en;
+        // 跟读要覆盖整句「每个词」，所以：先按区间标出收录词（可点 chip），
+        // 剩下的普通文本再把每个单词包成 <span class="w" data-kw>，全部参与歌词式高亮
         const linkedWords = wordsOfSentence(sentence);
         const marks = linkedWords.length
           ? linkedWords.map((w) => ({ key: w.word, id: w.id }))
           : (sentence.highlightWords || []).map((k) => ({ key: k, id: "" }));
         const ownerId = SENTENCE_OWNER[String(sentence.id)] || "";
-        marks.forEach((m) => {
-          const regex = new RegExp('\\b(' + m.key + ')\\b', 'gi');
+        const enRaw = String(sentence.en);
+        const escSegRe = function (s) { return String(s).split("").map(function (ch) { return "^$.|?*+()[]{}".indexOf(ch) >= 0 ? "\\" + ch : ch; }).join(""); };
+        // 1) 收集收录词在句中占的区间（长词优先，互不重叠）
+        const hits = [];
+        marks.slice().sort((a, b) => String(b.key).length - String(a.key).length).forEach((m) => {
+          const re = new RegExp('\\b(' + escSegRe(m.key) + ')\\b', 'gi');
+          let h;
+          while ((h = re.exec(enRaw))) {
+            const s0 = h.index, e0 = s0 + h[0].length;
+            if (hits.some((x) => s0 < x.end && e0 > x.start)) continue;
+            hits.push({ start: s0, end: e0, text: h[0], mark: m });
+          }
+        });
+        hits.sort((a, b) => a.start - b.start);
+        // 2) 普通文本：每个单词包一层，标点原样留着（供判断停顿）
+        const plain = (txt) => String(txt).replace(/[A-Za-z0-9'\u2019-]+/g,
+          (w) => '<span class="w" data-kw="1">' + w + '</span>');
+        let formattedEn = '';
+        let cursor = 0;
+        hits.forEach((h) => {
+          formattedEn += plain(enRaw.slice(cursor, h.start));
+          const m = h.mark;
           // 点例句里的词不再跳去单词页，而是唤起「单词」底部弹窗并定位到这个词
           const action = m.id
             ? ("openWordsSheetAt('" + sentence.id + "', '" + m.id + "')")
@@ -1883,12 +1945,11 @@
             ? 'bg-sky-100 text-sky-900 border-sky-400 hover:bg-sky-200'
             : 'bg-amber-100 text-amber-900 border-amber-400 hover:bg-amber-200';
           const tip = isOwner ? '点击在下方单词区定位这个词' : '点击在下方单词区查看';
-          formattedEn = formattedEn.replace(
-            regex,
-            '<span data-kw="1" class="' + cls + ' px-1 py-0.5 rounded font-semibold border-b-2 cursor-pointer transition" ' +
-            'title="' + tip + '" onclick="event.stopPropagation(); ' + action + '">' + '$1</span>'
-          );
+          formattedEn += '<span data-kw="1" class="' + cls + ' px-1 py-0.5 rounded font-semibold border-b-2 cursor-pointer transition" ' +
+            'title="' + tip + '" onclick="event.stopPropagation(); ' + action + '">' + h.text + '</span>';
+          cursor = h.end;
         });
+        formattedEn += plain(enRaw.slice(cursor));
 
         const hasBreakdown = !!sentence.breakdown;
         const sentenceText = sentence.en.replace(/'/g, "\\'");
@@ -1904,7 +1965,7 @@
               </button>
 
               <div class="flex-1">
-                <p class="text-base sm:text-lg text-stone-900 leading-relaxed font-medium">
+                <p class="sentence-en text-base sm:text-lg text-stone-900 leading-relaxed font-medium">
                   ${formattedEn}
                 </p>
                 <p class="trans-text text-sm text-stone-500 mt-1.5 leading-normal ${showTranslations ? '' : 'hidden'}">
@@ -2177,11 +2238,11 @@
 
             <div class="mt-1.5 flex items-center gap-2 flex-wrap">
               <span class="font-serif text-xs text-sky-700 font-semibold bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">${item.ipa || ''}</span>
-              ${item.pos ? `<span class="text-[11px] font-bold text-stone-500">${item.pos}</span>` : ''}
+              ${item.pos ? `<span class="${posTransCls(item.pos)} text-[11px] font-bold text-stone-500">${item.pos}</span>` : ''}
             </div>
 
-            <div class="text-xs text-stone-600 mt-1">${item.cn || ''}</div>
-            ${item.note ? `<div class="text-[11px] text-rose-600 mt-1 leading-relaxed">※ ${item.note}</div>` : ''}
+            <div class="trans-text text-xs text-stone-600 mt-1 ${showTranslations ? '' : 'hidden'}">${item.cn || ''}</div>
+            ${item.note ? `<div class="trans-text text-[11px] text-rose-600 mt-1 leading-relaxed ${showTranslations ? '' : 'hidden'}">※ ${item.note}</div>` : ''}
           </div>`).join("");
 
       if (window.lucide) lucide.createIcons();
@@ -2229,12 +2290,12 @@
           </div>
 
           <div class="mt-1.5 flex items-center gap-2 flex-wrap">
-            <span class="text-xs text-stone-600 font-bold">${w.pos || ''}</span>
+            <span class="${posTransCls(w.pos)} text-xs text-stone-600 font-bold">${w.pos || ''}</span>
             <span class="text-[11px] px-1.5 py-0.5 rounded font-semibold ${themeChipClass(w.theme)}">${themeName(w.theme)}</span>
           </div>
 
-          <div class="text-xs text-stone-600 mt-1">${w.meaning || w.cn || ''}</div>
-          ${w.note ? `<div class="text-[11px] text-rose-600 mt-1 leading-relaxed">※ ${w.note}</div>` : ''}
+          <div class="trans-text text-xs text-stone-600 mt-1 ${showTranslations ? '' : 'hidden'}">${w.meaning || w.cn || ''}</div>
+          ${w.note ? `<div class="trans-text text-[11px] text-rose-600 mt-1 leading-relaxed ${showTranslations ? '' : 'hidden'}">※ ${w.note}</div>` : ''}
 
           ${hasPhonics ? `
           <div class="mt-2.5 pt-2 border-t border-stone-200 flex flex-col space-y-1 font-mono text-xs">
@@ -2427,6 +2488,14 @@
       }
       speakNext();
     }
+
+    /* 词性里含中文（如「数词」「名词」）才算翻译，跟着双语开关走；n. / adj. 这类保留 */
+    function posTransCls(pos) {
+      var s = String(pos == null ? "" : pos);
+      if (!/[一-龥]/.test(s)) return "";
+      return "trans-text " + (showTranslations ? "" : "hidden");
+    }
+    window.posTransCls = posTransCls;
 
     /* ---- 移动端：单词区域底部半屏弹窗 ---- */
     /* 彻底解锁滚动（任何路径都调到它，只增不减，不会残留） */
